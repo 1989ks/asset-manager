@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="家族資産管理">
+<meta name="theme-color" content="#0f1923">
+<title>家族資産管理</title>
+<style>
+:root {
+  --bg:#0f1923; --surface:#1a2535; --surface2:#243044; --border:#2e3f55;
+  --accent:#3ecf8e; --accent2:#5b8dee; --warn:#f7c948; --danger:#e05c5c;
+  --text:#e8edf5; --text2:#8a9bb5; --text3:#5a6e8a;
+  --up:#3ecf8e; --down:#e05c5c; --radius:12px; --radius-sm:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,'Helvetica Neue',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:84px;}
+
+/* HEADER */
+.header{position:sticky;top:0;z-index:100;background:rgba(15,25,35,0.94);backdrop-filter:blur(12px);padding:14px 18px 10px;border-bottom:1px solid var(--border);}
+.header-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.app-title{font-size:12px;font-weight:700;color:var(--text2);letter-spacing:0.1em;text-transform:uppercase;}
+.header-right{display:flex;align-items:center;gap:10px;}
+.last-updated{font-size:10px;color:var(--text3);}
+.refresh-btn{background:none;border:none;color:var(--text2);cursor:pointer;font-size:18px;padding:4px;transition:color .2s;line-height:1;}
+.refresh-btn:active{color:var(--accent);}
+.refresh-btn.spinning{animation:spin 1s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* OWNER FILTER TABS */
+.owner-tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;}
+.owner-tabs::-webkit-scrollbar{display:none;}
+.owner-tab{
+  flex-shrink:0;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;
+  border:1.5px solid var(--border);background:none;color:var(--text3);cursor:pointer;
+  transition:all .2s;white-space:nowrap;
+}
+.owner-tab.active{background:var(--accent);border-color:var(--accent);color:#0f1923;}
+
+/* TOTAL */
+.total-bar{padding:10px 18px 12px;background:#e8f0fe;border-radius:0 0 12px 12px;margin-bottom:2px;}
+.total-label{font-size:11px;color:#3a5070;margin-bottom:2px;font-weight:600;}
+.total-value{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-0.5px;color:#0a1628;}
+.total-chips{display:flex;gap:8px;margin-top:4px;}
+.chip{font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;}
+.chip.up{background:rgba(62,207,142,.25);color:#4dffb0;}
+.chip.down{background:rgba(224,92,92,.25);color:#ff7070;}
+.chip.flat{background:rgba(138,155,181,.2);color:#c0cce0;}
+
+/* NAV */
+.nav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(15,25,35,.96);backdrop-filter:blur(12px);border-top:1px solid var(--border);display:flex;}
+.nav-btn{flex:1;background:none;border:none;cursor:pointer;padding:9px 4px 14px;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text3);transition:color .2s;}
+.nav-btn.active{color:var(--accent);}
+.nav-btn svg{width:21px;height:21px;}
+.nav-label{font-size:10px;font-weight:500;}
+
+/* FAB */
+.fab{position:fixed;right:18px;bottom:88px;z-index:90;width:50px;height:50px;border-radius:25px;background:var(--accent);color:#0f1923;border:none;font-size:22px;cursor:pointer;box-shadow:0 4px 16px rgba(62,207,142,.4);display:flex;align-items:center;justify-content:center;transition:transform .2s;}
+.fab:active{transform:scale(.92);}
+
+/* PAGES */
+.page{display:none;padding:14px 14px 0;}
+.page.active{display:block;}
+
+/* SECTION */
+.section-title{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;}
+
+/* ALLOC BAR */
+.alloc-bar{height:7px;border-radius:4px;overflow:hidden;display:flex;margin-bottom:10px;}
+.alloc-segment{height:100%;transition:width .5s ease;}
+.alloc-legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-bottom:16px;}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);}
+.legend-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+
+/* OWNER SUMMARY CARDS (dashboard) */
+.owner-summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+.owner-summary-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;}
+.osc-name{font-size:12px;color:#e0ecff;margin-bottom:4px;display:flex;align-items:center;gap:6px;font-weight:600;}
+.osc-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.osc-total{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;color:#e8ff6e;}
+.osc-change{font-size:11px;margin-top:2px;}
+.osc-change.up{color:var(--up);}
+.osc-change.down{color:var(--down);}
+.osc-change.flat{color:var(--text3);}
+
+/* ASSET CARD */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:13px 15px;margin-bottom:9px;}
+.card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+.card-title-row{display:flex;flex-direction:column;gap:4px;}
+.card-name{font-size:15px;font-weight:600;color:#ffffff;}
+.card-badges{display:flex;gap:5px;flex-wrap:wrap;align-items:center;}
+.badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;}
+.badge-type-jp{background:rgba(91,141,238,.2);color:var(--accent2);}
+.badge-type-us{background:rgba(62,207,142,.15);color:var(--up);}
+.badge-type-crypto{background:rgba(247,201,72,.15);color:var(--warn);}
+.badge-type-trust{background:rgba(180,120,240,.15);color:#b478f0;}
+.badge-type-cash{background:rgba(138,155,181,.15);color:var(--text2);}
+.badge-owner{border-radius:20px;font-size:10px;font-weight:700;padding:2px 8px;}
+.badge-live{background:rgba(62,207,142,.12);color:var(--up);font-size:10px;padding:1px 5px;border-radius:3px;font-weight:600;}
+.badge-manual{background:rgba(138,155,181,.12);color:var(--text3);font-size:10px;padding:1px 5px;border-radius:3px;font-weight:600;}
+.badge-accum{background:rgba(62,207,142,.1);color:var(--accent);font-size:10px;padding:1px 6px;border-radius:3px;}
+.card-body{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.stat-label{font-size:10px;color:#8aa0bb;margin-bottom:2px;}
+.stat-value{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;color:#e0eaff;}
+.stat-value.up{color:var(--up);}
+.stat-value.down{color:var(--down);}
+.card-footer{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.card-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.card-code{font-size:11px;color:var(--text3);font-family:'SF Mono',monospace;}
+.card-qty{font-size:10px;color:var(--text3);}
+.card-actions{display:flex;gap:6px;}
+.icon-btn{background:var(--surface2);border:none;border-radius:6px;color:var(--text2);cursor:pointer;padding:5px 8px;font-size:12px;transition:background .2s;}
+.icon-btn:active{background:var(--border);}
+
+/* SECTION GROUP */
+.section-group{margin-bottom:4px;}
+
+/* EMPTY */
+.empty{text-align:center;padding:50px 20px;color:var(--text3);}
+.empty-icon{font-size:38px;margin-bottom:10px;}
+.empty-text{font-size:13px;line-height:1.6;}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);align-items:flex-end;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border-radius:var(--radius) var(--radius) 0 0;width:100%;max-height:92vh;overflow-y:auto;padding:18px 18px 44px;animation:slideUp .28s ease;}
+@keyframes slideUp{from{transform:translateY(100%);}}
+.modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 18px;}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:18px;}
+.form-group{margin-bottom:13px;}
+.form-label{font-size:11px;color:var(--text2);font-weight:600;margin-bottom:5px;display:block;}
+.form-input,.form-select{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:15px;padding:11px 13px;-webkit-appearance:none;outline:none;transition:border-color .2s;}
+.form-input:focus,.form-select:focus{border-color:var(--accent);}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.toggle-row{display:flex;align-items:center;gap:10px;}
+.toggle-switch{position:relative;width:42px;height:25px;flex-shrink:0;}
+.toggle-switch input{opacity:0;width:0;height:0;}
+.toggle-slider{position:absolute;inset:0;background:var(--border);border-radius:13px;cursor:pointer;transition:.3s;}
+.toggle-slider::after{content:'';position:absolute;left:3px;top:3px;width:19px;height:19px;background:white;border-radius:50%;transition:.3s;}
+.toggle-switch input:checked+.toggle-slider{background:var(--accent);}
+.toggle-switch input:checked+.toggle-slider::after{transform:translateX(17px);}
+.accum-fields{margin-top:11px;display:none;}
+.accum-fields.visible{display:block;}
+.btn-primary{width:100%;background:var(--accent);color:#0f1923;border:none;border-radius:var(--radius-sm);padding:13px;font-size:15px;font-weight:700;cursor:pointer;margin-top:6px;transition:opacity .2s;}
+.btn-primary:active{opacity:.8;}
+.btn-secondary{width:100%;background:var(--surface2);color:var(--text2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px;}
+.btn-danger{width:100%;background:rgba(224,92,92,.15);color:var(--danger);border:1px solid rgba(224,92,92,.3);border-radius:var(--radius-sm);padding:11px;font-size:14px;font-weight:600;cursor:pointer;margin-top:6px;}
+
+/* OWNER MANAGE MODAL */
+.owner-list-item{display:flex;justify-content:space-between;align-items:center;padding:11px 13px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;}
+.owner-list-name{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;}
+.owner-color-dot{width:10px;height:10px;border-radius:50%;}
+.owner-delete-btn{background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:4px;}
+
+/* HISTORY */
+.history-item{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--border);}
+.history-name{font-size:13px;font-weight:600;}
+.history-sub{font-size:11px;color:var(--text2);margin-top:2px;}
+.history-date{font-size:10px;color:var(--text3);margin-top:1px;}
+.history-amt{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;}
+.history-amt.up{color:var(--up);}
+.history-amt.down{color:var(--down);}
+
+/* SETTINGS */
+.settings-item{display:flex;justify-content:space-between;align-items:center;padding:13px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;cursor:pointer;}
+.settings-item-left{display:flex;align-items:center;gap:10px;}
+.settings-icon{font-size:17px;}
+.settings-label{font-size:14px;font-weight:500;}
+.settings-desc{font-size:11px;color:var(--text3);margin-top:1px;}
+
+/* COLOR SWATCHES */
+.color-swatches{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+.swatch{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2.5px solid transparent;transition:border-color .2s;}
+.swatch.selected{border-color:white;}
+
+/* TOAST */
+.toast{position:fixed;top:76px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:7px 16px;font-size:13px;font-weight:500;z-index:300;opacity:0;transition:opacity .3s;white-space:nowrap;}
+.toast.show{opacity:1;}
+
+/* SCAN MODAL */
+.scan-drop-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:28px 16px;text-align:center;cursor:pointer;transition:border-color .2s;margin-bottom:14px;position:relative;}
+.scan-drop-zone:active,.scan-drop-zone.drag{border-color:var(--accent);}
+.scan-drop-icon{font-size:32px;margin-bottom:8px;}
+.scan-drop-text{font-size:13px;color:var(--text2);line-height:1.5;}
+.scan-preview{width:100%;max-height:180px;object-fit:contain;border-radius:var(--radius-sm);margin-bottom:14px;border:1px solid var(--border);}
+.scan-analyzing{display:flex;flex-direction:column;align-items:center;padding:28px;gap:12px;}
+.scan-spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;}
+.scan-analyzing-text{font-size:13px;color:var(--text2);}
+.scan-result-item{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 13px;margin-bottom:8px;}
+.scan-result-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.scan-result-name{font-size:14px;font-weight:600;}
+.scan-result-check{width:20px;height:20px;accent-color:var(--accent);cursor:pointer;}
+.scan-result-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.scan-result-field{display:flex;flex-direction:column;gap:3px;}
+.scan-result-label{font-size:10px;color:var(--text3);}
+.scan-result-input{background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:6px 9px;width:100%;outline:none;}
+.scan-result-input:focus{border-color:var(--accent);}
+.scan-type-select{background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:5px 8px;width:100%;-webkit-appearance:none;outline:none;}
+.scan-error{background:rgba(224,92,92,.1);border:1px solid rgba(224,92,92,.3);border-radius:var(--radius-sm);padding:12px;font-size:13px;color:var(--danger);text-align:center;margin-bottom:12px;}
+.scan-step{display:none;}
+.scan-step.active{display:block;}
+.scan-progress{display:flex;gap:8px;margin-bottom:18px;align-items:center;}
+.scan-step-dot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+.scan-step-dot.done{background:var(--accent);color:#0f1923;}
+.scan-step-dot.active{background:var(--accent2);color:white;}
+.scan-step-dot.pending{background:var(--surface2);color:var(--text3);}
+.scan-step-line{flex:1;height:2px;background:var(--border);}
+.scan-step-line.done{background:var(--accent);}
+.api-key-note{font-size:11px;color:var(--text3);background:var(--surface2);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:14px;line-height:1.6;}
+</style>
+
+<script>
+// ===== 初期プリセットデータ =====
+var PRESET_DATA = {"owners": [{"id": "o1", "name": "こーすけ", "color": "#3ecf8e"}, {"id": "o2", "name": "PayPay証券", "color": "#f7c948"}, {"id": "o3", "name": "ほのか", "color": "#f060b4"}, {"id": "o4", "name": "ゆうな", "color": "#60c8f0"}, {"id": "o5", "name": "あおい", "color": "#b478f0"}, {"id": "o6", "name": "妻", "color": "#f08060"}, {"id": "o7", "name": "暗号資産(こーすけ)", "color": "#f7c948"}], "assets": [{"id": "a1750000000000", "ownerId": "o2", "type": "us", "name": "クラウドストライク・ホールディングス", "ticker": "CRWD", "qty": 1.9750021462, "costPrice": 35949.328023, "manualPrice": 107653.553901, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000001", "ownerId": "o2", "type": "us", "name": "アップル", "ticker": "AAPL", "qty": 3.3782034246, "costPrice": 28121.456307, "manualPrice": 46645.503599, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000002", "ownerId": "o2", "type": "us", "name": "コカ・コーラ", "ticker": "KO", "qty": 8.2217434346, "costPrice": 9608.66763, "manualPrice": 12801.421114, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000003", "ownerId": "o2", "type": "us", "name": "PayPay ADS（ペイパル）", "ticker": "PYPL", "qty": 39.1996989463, "costPrice": 2551.04, "manualPrice": 2235.527373, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000004", "ownerId": "o2", "type": "us", "name": "テスラ", "ticker": "TSLA", "qty": 1.3984204454, "costPrice": 39330.088587, "manualPrice": 60067.771661, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000005", "ownerId": "o2", "type": "us", "name": "エクソン・モービル", "ticker": "XOM", "qty": 3.2698717966, "costPrice": 16514.408931, "manualPrice": 21840.305811, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000006", "ownerId": "o2", "type": "us", "name": "スリーエム", "ticker": "MMM", "qty": 2.58599, "costPrice": 15241.358242, "manualPrice": 26682.624449, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000007", "ownerId": "o2", "type": "us", "name": "アルトリア・グループ", "ticker": "MO", "qty": 5.8222849352, "costPrice": 7557.170508, "manualPrice": 11519.704162, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000008", "ownerId": "o2", "type": "us", "name": "マイクロソフト", "ticker": "MSFT", "qty": 1.1201287168, "costPrice": 58921.799799, "manualPrice": 58575.411036, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000009", "ownerId": "o2", "type": "us", "name": "ブロック", "ticker": "SQ", "qty": 5.1577345475, "costPrice": 9694.178624, "manualPrice": 12237.931095, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000010", "ownerId": "o2", "type": "us", "name": "JPモルガン・チェース", "ticker": "JPM", "qty": 1.1515588146, "costPrice": 30393.58438, "manualPrice": 53711.542316, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000011", "ownerId": "o2", "type": "us", "name": "ダナハー・コーポレーション", "ticker": "DHR", "qty": 1.7179814665, "costPrice": 32472.410843, "manualPrice": 30211.03604, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000012", "ownerId": "o2", "type": "us", "name": "オクタ", "ticker": "OKTA", "qty": 2.7313901586, "costPrice": 12081.759867, "manualPrice": 18966.898536, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000013", "ownerId": "o2", "type": "us", "name": "コストコ・ホールセール", "ticker": "COST", "qty": 0.323946832, "costPrice": 111129.3473, "manualPrice": 153426.411653, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000014", "ownerId": "o2", "type": "us", "name": "ウォルマート", "ticker": "WMT", "qty": 2.3426399725, "costPrice": 12806.065103, "manualPrice": 18748.933048, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000015", "ownerId": "o2", "type": "us", "name": "エヌビディア", "ticker": "NVDA", "qty": 1.2692334997, "costPrice": 25212.066974, "manualPrice": 32149.324777, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000016", "ownerId": "o2", "type": "us", "name": "ユナイテッドヘルス・グループ", "ticker": "UNH", "qty": 0.6030933016, "costPrice": 58034.138179, "manualPrice": 64779.363154, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000017", "ownerId": "o2", "type": "us", "name": "シェブロン", "ticker": "CVX", "qty": 1.3674932631, "costPrice": 23652.036081, "manualPrice": 27366.131161, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000018", "ownerId": "o2", "type": "us", "name": "ターゲット", "ticker": "TGT", "qty": 1.5768754126, "costPrice": 17122.468766, "manualPrice": 22540.778882, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000019", "ownerId": "o2", "type": "us", "name": "ウォルト・ディズニー", "ticker": "DIS", "qty": 1.5474575732, "costPrice": 16155.531779, "manualPrice": 16158.116664, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000020", "ownerId": "o2", "type": "us", "name": "ペプシコ", "ticker": "PEP", "qty": 0.13509, "costPrice": 22207.417277, "manualPrice": 22725.590347, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000200", "ownerId": "o1", "type": "trust", "name": "eMAXIS Slim 全世界株式 (つみたて投資枠)", "ticker": "", "qty": 1003507, "costPrice": 2.481298, "manualPrice": 3.7637, "accum": {"enabled": true, "day": 1, "amount": 70000, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000201", "ownerId": "o1", "type": "trust", "name": "eMAXIS Slim 全世界株式 (成長投資枠)", "ticker": "", "qty": 39181, "costPrice": 2.807483, "manualPrice": 3.763712, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000202", "ownerId": "o1", "type": "trust", "name": "eMAXIS Slim 全世界株式 (つみたてNISA・受取型)", "ticker": "", "qty": 218101, "costPrice": 1.676595, "manualPrice": 3.763701, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000203", "ownerId": "o1", "type": "trust", "name": "eMAXIS Slim 全世界株式 (つみたてNISA・再投資型)", "ticker": "", "qty": 518909, "costPrice": 1.607845, "manualPrice": 3.7637, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000205", "ownerId": "o1", "type": "trust", "name": "楽天・SCHD (成長投資枠)", "ticker": "", "qty": 693428, "costPrice": 1.092954, "manualPrice": 1.2956, "accum": {"enabled": true, "day": 1, "amount": 50000, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000206", "ownerId": "o1", "type": "trust", "name": "ニッセイNASDAQ100インデックスファンド (成長投資枠)", "ticker": "", "qty": 101769, "costPrice": 1.473926, "manualPrice": 2.829005, "accum": {"enabled": true, "day": 1, "amount": 20000, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000300", "ownerId": "o1", "type": "us", "name": "バタフライ・ネットワーク (iGrow)", "ticker": "BFLY", "qty": 1, "costPrice": 52388, "manualPrice": 263943, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000301", "ownerId": "o1", "type": "us", "name": "クアンタムスケープ (iGrow)", "ticker": "QS", "qty": 1, "costPrice": 41916, "manualPrice": 51827, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000302", "ownerId": "o1", "type": "us", "name": "ジョビー・アビエーション (iGrow)", "ticker": "JOBY", "qty": 1, "costPrice": 27242, "manualPrice": 25519, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000303", "ownerId": "o1", "type": "us", "name": "シバンエ・スティルウォーター (iGrow)", "ticker": "SBSW", "qty": 1, "costPrice": 11653, "manualPrice": 13895, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000304", "ownerId": "o1", "type": "us", "name": "アルティミュン (iGrow)", "ticker": "ALT", "qty": 1, "costPrice": 11410, "manualPrice": 11929, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000305", "ownerId": "o1", "type": "us", "name": "リカージョン・ファーマシューティカルズ (iGrow)", "ticker": "RXRX", "qty": 1, "costPrice": 11649, "manualPrice": 11494, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000306", "ownerId": "o1", "type": "us", "name": "MPマテリアルズ (iGrow)", "ticker": "MP", "qty": 1, "costPrice": 3471, "manualPrice": 9141, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000000307", "ownerId": "o1", "type": "us", "name": "チャージポイント (iGrow)", "ticker": "CHPT", "qty": 1, "costPrice": 36840, "manualPrice": 2707, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000001400", "ownerId": "o3", "type": "trust", "name": "eMAXIS Slim 全世界株式(オルカン)", "ticker": "", "qty": 910113, "costPrice": 1.758022, "manualPrice": 3.7637, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000001401", "ownerId": "o4", "type": "trust", "name": "楽天・全米株式インデックス・ファンド(楽天・VTI)", "ticker": "", "qty": 774138, "costPrice": 2.066815, "manualPrice": 4.430499, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000001402", "ownerId": "o5", "type": "trust", "name": "eMAXIS Slim 米国株式(S&P500)", "ticker": "", "qty": 791166, "costPrice": 2.022332, "manualPrice": 4.375301, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000002000", "ownerId": "o7", "type": "crypto", "name": "ビットコイン (bitflyer)", "ticker": "", "qty": 0.0100592, "costPrice": 9676117.38508, "manualPrice": 9676117.38508, "accum": {"enabled": true, "day": 1, "amount": 15000, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000002001", "ownerId": "o7", "type": "crypto", "name": "イーサリアム (bitflyer)", "ticker": "", "qty": 0.21879004, "costPrice": 255208.143844, "manualPrice": 255208.143844, "accum": {"enabled": true, "day": 1, "amount": 15000, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000002002", "ownerId": "o7", "type": "crypto", "name": "ドージコイン (bitflyer)", "ticker": "", "qty": 654.46718505, "costPrice": 12.12895, "manualPrice": 12.12895, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000002003", "ownerId": "o7", "type": "crypto", "name": "シバイヌ (bitflyer)", "ticker": "", "qty": 1394797.40567682, "costPrice": 0.000688, "manualPrice": 0.000688, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000002004", "ownerId": "o7", "type": "crypto", "name": "チェーンリンク (bitflyer)", "ticker": "", "qty": 35.74438218, "costPrice": 1173.97469, "manualPrice": 1173.97469, "accum": {"enabled": true, "day": 1, "amount": 6000, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000002005", "ownerId": "o7", "type": "crypto", "name": "アバランチ (bitflyer)", "ticker": "", "qty": 10.68693221, "costPrice": 1008.989277, "manualPrice": 1008.989277, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000002006", "ownerId": "o7", "type": "crypto", "name": "ポルカドット (bitflyer)", "ticker": "", "qty": 62.40406637, "costPrice": 136.994278, "manualPrice": 136.994278, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000002007", "ownerId": "o7", "type": "crypto", "name": "レンダートークン (bitflyer)", "ticker": "", "qty": 7.27042395, "costPrice": 261.195222, "manualPrice": 261.195222, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000002008", "ownerId": "o7", "type": "crypto", "name": "フレア (bitflyer)", "ticker": "", "qty": 15315.341582, "costPrice": 1.10497, "manualPrice": 1.10497, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000002009", "ownerId": "o7", "type": "crypto", "name": "ザ・グラフ (bitflyer)", "ticker": "", "qty": 1915.52729766, "costPrice": 2.939661, "manualPrice": 2.939661, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000002010", "ownerId": "o7", "type": "crypto", "name": "ザ・サンドボックス (bitflyer)", "ticker": "", "qty": 13.96648044, "costPrice": 7.5896, "manualPrice": 7.5896, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000002011", "ownerId": "o7", "type": "crypto", "name": "アクシーインフィニティ (bitflyer)", "ticker": "", "qty": 1.70648464, "costPrice": 165.838, "manualPrice": 165.838, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000002020", "ownerId": "o7", "type": "crypto", "name": "ビットコイン (PBRレンディング)", "ticker": "", "qty": 0.14671049, "costPrice": 9649909.832623, "manualPrice": 9649909.832623, "accum": {"enabled": true, "day": 1, "amount": 11751, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000002021", "ownerId": "o7", "type": "crypto", "name": "イーサリアム (PBRレンディング)", "ticker": "", "qty": 0.46806879, "costPrice": 253195.689463, "manualPrice": 253195.689463, "accum": {"enabled": true, "day": 1, "amount": 984, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000002030", "ownerId": "o7", "type": "crypto", "name": "USDC (bitlending)", "ticker": "", "qty": 2248.85566399, "costPrice": 161.749821, "manualPrice": 161.749821, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000003000", "ownerId": "o6", "type": "trust", "name": "eMAXIS Slim 米国株式(S&P500) (つみたて投資枠)", "ticker": "", "qty": 184530, "costPrice": 3.251504, "manualPrice": 4.375299, "accum": {"enabled": true, "day": 1, "amount": 20000, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000003001", "ownerId": "o6", "type": "trust", "name": "eMAXIS Slim 米国株式(S&P500) (成長投資枠)", "ticker": "", "qty": 119237, "costPrice": 2.515998, "manualPrice": 4.375303, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000003002", "ownerId": "o6", "type": "trust", "name": "eMAXIS Slim 米国株式(S&P500) (つみたてNISA)", "ticker": "", "qty": 347828, "costPrice": 1.894005, "manualPrice": 4.3753, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000003003", "ownerId": "o6", "type": "trust", "name": "eMAXIS Slim 新興国株式インデックス (つみたてNISA)", "ticker": "", "qty": 140909, "costPrice": 1.281678, "manualPrice": 2.818202, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000003004", "ownerId": "o6", "type": "trust", "name": "eMAXIS Slim 全世界株式(除く日本) (つみたてNISA)", "ticker": "", "qty": 212413, "costPrice": 1.697636, "manualPrice": 3.796001, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000006500", "ownerId": "o1", "type": "trust", "name": "iFreeNEXT FANG+インデックス (つみたて投資枠)", "ticker": "", "qty": 67588, "costPrice": 7.545718, "manualPrice": 9.1111, "accum": {"enabled": true, "day": 1, "amount": 30000, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}, {"id": "a1750000006501", "ownerId": "o1", "type": "trust", "name": "iFreeNEXT FANG+インデックス (成長投資枠)", "ticker": "", "qty": 70956, "costPrice": 6.027679, "manualPrice": 9.111097, "accum": {"enabled": false, "day": 1, "amount": 0, "startDate": "2024-01-01", "processed": {}}, "createdAt": "2025-06-25T05:00:00.000Z"}], "history": [], "priceCache": {"a1750000000000": {"price": 107653.553901, "prevClose": 107653.553901, "ts": 1750000000000, "live": false}, "a1750000000001": {"price": 46645.503599, "prevClose": 46645.503599, "ts": 1750000000000, "live": false}, "a1750000000002": {"price": 12801.421114, "prevClose": 12801.421114, "ts": 1750000000000, "live": false}, "a1750000000003": {"price": 2235.527373, "prevClose": 2235.527373, "ts": 1750000000000, "live": false}, "a1750000000004": {"price": 60067.771661, "prevClose": 60067.771661, "ts": 1750000000000, "live": false}, "a1750000000005": {"price": 21840.305811, "prevClose": 21840.305811, "ts": 1750000000000, "live": false}, "a1750000000006": {"price": 26682.624449, "prevClose": 26682.624449, "ts": 1750000000000, "live": false}, "a1750000000007": {"price": 11519.704162, "prevClose": 11519.704162, "ts": 1750000000000, "live": false}, "a1750000000008": {"price": 58575.411036, "prevClose": 58575.411036, "ts": 1750000000000, "live": false}, "a1750000000009": {"price": 12237.931095, "prevClose": 12237.931095, "ts": 1750000000000, "live": false}, "a1750000000010": {"price": 53711.542316, "prevClose": 53711.542316, "ts": 1750000000000, "live": false}, "a1750000000011": {"price": 30211.03604, "prevClose": 30211.03604, "ts": 1750000000000, "live": false}, "a1750000000012": {"price": 18966.898536, "prevClose": 18966.898536, "ts": 1750000000000, "live": false}, "a1750000000013": {"price": 153426.411653, "prevClose": 153426.411653, "ts": 1750000000000, "live": false}, "a1750000000014": {"price": 18748.933048, "prevClose": 18748.933048, "ts": 1750000000000, "live": false}, "a1750000000015": {"price": 32149.324777, "prevClose": 32149.324777, "ts": 1750000000000, "live": false}, "a1750000000016": {"price": 64779.363154, "prevClose": 64779.363154, "ts": 1750000000000, "live": false}, "a1750000000017": {"price": 27366.131161, "prevClose": 27366.131161, "ts": 1750000000000, "live": false}, "a1750000000018": {"price": 22540.778882, "prevClose": 22540.778882, "ts": 1750000000000, "live": false}, "a1750000000019": {"price": 16158.116664, "prevClose": 16158.116664, "ts": 1750000000000, "live": false}, "a1750000000020": {"price": 22725.590347, "prevClose": 22725.590347, "ts": 1750000000000, "live": false}, "a1750000000200": {"price": 3.7637, "prevClose": 3.7637, "ts": 1750000006000, "live": false}, "a1750000000201": {"price": 3.763712, "prevClose": 3.763712, "ts": 1750000006000, "live": false}, "a1750000000202": {"price": 3.763701, "prevClose": 3.763701, "ts": 1750000006000, "live": false}, "a1750000000203": {"price": 3.7637, "prevClose": 3.7637, "ts": 1750000006000, "live": false}, "a1750000000204": {"price": 9.111098, "prevClose": 9.111098, "ts": 1750000000000, "live": false}, "a1750000000205": {"price": 1.2956, "prevClose": 1.2956, "ts": 1750000006000, "live": false}, "a1750000000206": {"price": 2.829005, "prevClose": 2.829005, "ts": 1750000006000, "live": false}, "a1750000000300": {"price": 263943, "prevClose": 263943, "ts": 1750000000000, "live": false}, "a1750000000301": {"price": 51827, "prevClose": 51827, "ts": 1750000000000, "live": false}, "a1750000000302": {"price": 25519, "prevClose": 25519, "ts": 1750000000000, "live": false}, "a1750000000303": {"price": 13895, "prevClose": 13895, "ts": 1750000000000, "live": false}, "a1750000000304": {"price": 11929, "prevClose": 11929, "ts": 1750000000000, "live": false}, "a1750000000305": {"price": 11494, "prevClose": 11494, "ts": 1750000000000, "live": false}, "a1750000000306": {"price": 9141, "prevClose": 9141, "ts": 1750000000000, "live": false}, "a1750000000307": {"price": 2707, "prevClose": 2707, "ts": 1750000000000, "live": false}, "a1750000001400": {"price": 3.7637, "prevClose": 3.7637, "ts": 1750000001000, "live": false}, "a1750000001401": {"price": 4.430499, "prevClose": 4.430499, "ts": 1750000001000, "live": false}, "a1750000001402": {"price": 4.375301, "prevClose": 4.375301, "ts": 1750000001000, "live": false}, "a1750000002000": {"price": 9676117.38508, "prevClose": 9676117.38508, "ts": 1750000005000, "live": false}, "a1750000002001": {"price": 255208.143844, "prevClose": 255208.143844, "ts": 1750000005000, "live": false}, "a1750000002002": {"price": 12.12895, "prevClose": 12.12895, "ts": 1750000005000, "live": false}, "a1750000002003": {"price": 0.000688, "prevClose": 0.000688, "ts": 1750000005000, "live": false}, "a1750000002004": {"price": 1173.97469, "prevClose": 1173.97469, "ts": 1750000005000, "live": false}, "a1750000002005": {"price": 1008.989277, "prevClose": 1008.989277, "ts": 1750000005000, "live": false}, "a1750000002006": {"price": 136.994278, "prevClose": 136.994278, "ts": 1750000005000, "live": false}, "a1750000002007": {"price": 261.195222, "prevClose": 261.195222, "ts": 1750000005000, "live": false}, "a1750000002008": {"price": 1.10497, "prevClose": 1.10497, "ts": 1750000005000, "live": false}, "a1750000002009": {"price": 2.939661, "prevClose": 2.939661, "ts": 1750000005000, "live": false}, "a1750000002010": {"price": 7.5896, "prevClose": 7.5896, "ts": 1750000005000, "live": false}, "a1750000002011": {"price": 165.838, "prevClose": 165.838, "ts": 1750000005000, "live": false}, "a1750000002020": {"price": 9649909.832623, "prevClose": 9649909.832623, "ts": 1750000005000, "live": false}, "a1750000002021": {"price": 253195.689463, "prevClose": 253195.689463, "ts": 1750000005000, "live": false}, "a1750000002030": {"price": 161.749821, "prevClose": 161.749821, "ts": 1750000005000, "live": false}, "a1750000003000": {"price": 4.375299, "prevClose": 4.375299, "ts": 1750000006000, "live": false}, "a1750000003001": {"price": 4.375303, "prevClose": 4.375303, "ts": 1750000006000, "live": false}, "a1750000003002": {"price": 4.3753, "prevClose": 4.3753, "ts": 1750000006000, "live": false}, "a1750000003003": {"price": 2.818202, "prevClose": 2.818202, "ts": 1750000006000, "live": false}, "a1750000003004": {"price": 3.796001, "prevClose": 3.796001, "ts": 1750000006000, "live": false}, "a1750000006500": {"price": 9.1111, "prevClose": 9.1111, "ts": 1750000006000, "live": false}, "a1750000006501": {"price": 9.111097, "prevClose": 9.111097, "ts": 1750000006000, "live": false}}, "usdJpy": 155};
+</script>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-top">
+    <span class="app-title">Family Assets</span>
+    <div class="header-right">
+      <span class="last-updated" id="lastUpdated">—</span>
+      <button class="refresh-btn" id="refreshBtn" onclick="refreshAll()">⟳</button>
+    </div>
+  </div>
+  <div class="owner-tabs" id="ownerTabs"></div>
+</div>
+
+<!-- TOTAL -->
+<div class="total-bar">
+  <div class="total-label" id="totalLabel">総資産（全員）</div>
+  <div class="total-value" id="totalValue">¥—</div>
+  <div class="total-chips">
+    <span class="chip flat" id="totalChangeAmt">—</span>
+    <span class="chip flat" id="totalChangePct">—%</span>
+  </div>
+</div>
+
+<!-- PAGES -->
+<div class="page active" id="page-holdings">
+  <!-- アセット配分 -->
+  <div id="allocSection">
+    <div class="section-title">アセット配分</div>
+    <div class="alloc-bar" id="allocBar"></div>
+    <div class="alloc-legend" id="allocLegend"></div>
+  </div>
+  <!-- 名義別サマリー（全員表示時のみ） -->
+  <div id="ownerSummarySection"></div>
+  <!-- 銘柄一覧 -->
+  <div id="holdingsList"></div>
+</div>
+
+<div class="page" id="page-history">
+  <div class="section-title">取引・積立履歴</div>
+  <div id="historyList"></div>
+</div>
+
+<div class="page" id="page-settings">
+  <div class="section-title" style="margin-bottom:10px">名義管理</div>
+  <div class="settings-item" onclick="openOwnerModal()">
+    <div class="settings-item-left">
+      <span class="settings-icon">👥</span>
+      <div>
+        <div class="settings-label">名義を管理</div>
+        <div class="settings-desc" id="ownerCount">名義の追加・削除</div>
+      </div>
+    </div>
+    <span style="color:var(--text3);font-size:12px">›</span>
+  </div>
+
+  <div class="section-title" style="margin-top:20px;margin-bottom:10px">AI スキャン設定</div>
+  <div class="settings-item" onclick="openApiKeyModal()">
+    <div class="settings-item-left"><span class="settings-icon">🔑</span>
+      <div><div class="settings-label">Claude API キー</div><div class="settings-desc" id="apiKeyStatus">未設定（スキャン機能に必要）</div></div>
+    </div><span style="color:var(--text3);font-size:12px">›</span>
+  </div>
+
+  <div class="section-title" style="margin-top:20px;margin-bottom:10px">データ管理</div>
+  <div class="settings-item" onclick="exportData()">
+    <div class="settings-item-left"><span class="settings-icon">📤</span>
+      <div><div class="settings-label">エクスポート</div><div class="settings-desc">JSONバックアップ</div></div>
+    </div><span style="color:var(--text3);font-size:12px">›</span>
+  </div>
+  <div class="settings-item" onclick="document.getElementById('importFile').click()">
+    <div class="settings-item-left"><span class="settings-icon">📥</span>
+      <div><div class="settings-label">JSONインポート</div><div class="settings-desc">バックアップから復元</div></div>
+    </div><span style="color:var(--text3);font-size:12px">›</span>
+  </div>
+  <div class="settings-item" onclick="document.getElementById('csvFile').click()">
+    <div class="settings-item-left"><span class="settings-icon">📊</span>
+      <div><div class="settings-label">楽天証券CSVインポート</div><div class="settings-desc">保有数量を口座CSVで更新</div></div>
+    </div><span style="color:var(--text3);font-size:12px">›</span>
+  </div>
+  <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+  <input type="file" id="csvFile" accept=".csv" style="display:none" onchange="importCSV(event)">
+
+  <div class="settings-item" onclick="if(confirm('全データを削除しますか？'))clearAllData()">
+    <div class="settings-item-left"><span class="settings-icon">🗑️</span>
+      <div><div class="settings-label" style="color:var(--danger)">全データ削除</div><div class="settings-desc">初期化</div></div>
+    </div><span style="color:var(--text3);font-size:12px">›</span>
+  </div>
+  <div style="text-align:center;margin-top:28px;font-size:11px;color:var(--text3)">家族資産管理 v2.0 · Yahoo Finance / CoinGecko</div>
+</div>
+
+<!-- NAV -->
+<nav class="nav">
+  <button class="nav-btn active" id="nav-holdings" onclick="switchPage('holdings')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+    <span class="nav-label">保有資産</span>
+  </button>
+  <button class="nav-btn" id="nav-history" onclick="switchPage('history')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+    <span class="nav-label">履歴</span>
+  </button>
+  <button class="nav-btn" id="nav-settings" onclick="switchPage('settings')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    <span class="nav-label">設定</span>
+  </button>
+</nav>
+
+<button class="fab" id="fab" onclick="openFabMenu()">+</button>
+
+<!-- FAB MENU -->
+<div id="fabMenu" style="display:none;position:fixed;right:18px;bottom:150px;z-index:89;flex-direction:column;gap:10px;align-items:flex-end;">
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:13px;font-weight:500;color:var(--text2);white-space:nowrap;">スクショから取込</span>
+    <button onclick="closeFabMenu();openScanModal()" style="width:46px;height:46px;border-radius:23px;background:var(--accent2);border:none;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;">📸</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:13px;font-weight:500;color:var(--text2);white-space:nowrap;">手動で追加</span>
+    <button onclick="closeFabMenu();openAddModal()" style="width:46px;height:46px;border-radius:23px;background:var(--surface2);border:1px solid var(--border);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✏️</button>
+  </div>
+</div>
+<div id="fabOverlay" style="display:none;position:fixed;inset:0;z-index:88;" onclick="closeFabMenu()"></div>
+
+<!-- SCAN MODAL -->
+<div class="modal-overlay" id="scanModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📸 スクリーンショットから取込</div>
+    <div class="scan-progress">
+      <div class="scan-step-dot active" id="sdot1">1</div>
+      <div class="scan-step-line" id="sline1"></div>
+      <div class="scan-step-dot pending" id="sdot2">2</div>
+      <div class="scan-step-line" id="sline2"></div>
+      <div class="scan-step-dot pending" id="sdot3">3</div>
+    </div>
+    <div class="scan-step active" id="scanStep1">
+      <div class="form-group">
+        <label class="form-label">名義（どの口座のスクリーンショットか）</label>
+        <select class="form-select" id="scanOwner"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">証券会社</label>
+        <select class="form-select" id="scanBroker">
+          <option value="rakuten">楽天証券</option>
+          <option value="sbi">SBI証券</option>
+          <option value="other">その他・不明</option>
+        </select>
+      </div>
+      <div class="scan-drop-zone" id="scanDropZone" onclick="document.getElementById('scanFileInput').click()">
+        <div class="scan-drop-icon">📂</div>
+        <div class="scan-drop-text">タップして画像を選択<br><span style="font-size:11px;color:var(--text3)">保有資産一覧・ポートフォリオ画面</span></div>
+      </div>
+      <input type="file" id="scanFileInput" accept="image/*" style="display:none" onchange="onScanImageSelected(event)">
+      <img id="scanPreview" class="scan-preview" style="display:none">
+      <div class="api-key-note">💡 Claude APIキーが必要です。設定タブ →「Claude APIキー」から登録してください。キーはこの端末内にのみ保存されます。</div>
+      <button class="btn-primary" id="scanAnalyzeBtn" onclick="startAnalysis()" disabled style="opacity:.4">AIで解析する</button>
+      <button class="btn-secondary" onclick="closeModal('scanModal')">キャンセル</button>
+    </div>
+    <div class="scan-step" id="scanStep2">
+      <div class="scan-analyzing">
+        <div class="scan-spinner"></div>
+        <div class="scan-analyzing-text" id="analyzingText">画像を解析しています…</div>
+      </div>
+    </div>
+    <div class="scan-step" id="scanStep3">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">検出した銘柄を確認・修正してから登録してください。チェックを外すとスキップします。</div>
+      <div id="scanResultList"></div>
+      <div id="scanError" class="scan-error" style="display:none"></div>
+      <button class="btn-primary" onclick="registerScannedAssets()">チェックした銘柄を登録</button>
+      <button class="btn-secondary" onclick="resetScan()">← 撮り直す</button>
+      <button class="btn-secondary" onclick="closeModal('scanModal')">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- API KEY MODAL -->
+<div class="modal-overlay" id="apiKeyModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🔑 Claude API キー設定</div>
+    <div class="api-key-note">
+      <strong>取得方法：</strong> console.anthropic.com にログイン → API Keys → Create Key<br><br>
+      キーはこの端末のlocalStorageにのみ保存されます。スクリーンショット解析時にAnthropicへ送信されます（他の用途には使用しません）。
+    </div>
+    <div class="form-group">
+      <label class="form-label">API キー (sk-ant-...)</label>
+      <input class="form-input" id="apiKeyInput" type="password" placeholder="sk-ant-api03-...">
+    </div>
+    <button class="btn-primary" onclick="saveApiKey()">保存する</button>
+    <button class="btn-secondary" onclick="closeModal('apiKeyModal')">キャンセル</button>
+  </div>
+</div>
+
+<!-- ADD/EDIT ASSET MODAL -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modalTitle">銘柄を追加</div>
+
+    <div class="form-group">
+      <label class="form-label">名義</label>
+      <select class="form-select" id="assetOwner"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">資産タイプ</label>
+      <select class="form-select" id="assetType" onchange="onTypeChange()">
+        <option value="jp">日本株</option>
+        <option value="us">米国株</option>
+        <option value="crypto">暗号資産</option>
+        <option value="trust">投資信託</option>
+        <option value="cash">現金・預金</option>
+      </select>
+    </div>
+    <div class="form-group" id="existingAssetGroup">
+      <label class="form-label">既存銘柄から選ぶ（任意）</label>
+      <select class="form-select" id="existingAsset" onchange="onExistingAssetChange()">
+        <option value="">── 新規入力する ──</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">銘柄名</label>
+      <input class="form-input" id="assetName" placeholder="例: eMAXIS Slim 全世界株式" type="text">
+    </div>
+    <div class="form-group" id="tickerGroup">
+      <label class="form-label" id="tickerLabel">ティッカー / コード</label>
+      <input class="form-input" id="assetTicker" placeholder="例: 7203.T" type="text">
+      <div style="font-size:10px;color:var(--text3);margin-top:4px;" id="tickerHint">日本株: 7203.T　米国株: AAPL　暗号資産: bitcoin</div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" id="qtyLabel">保有数量</label>
+        <input class="form-input" id="assetQty" placeholder="100" type="number" step="any">
+      </div>
+      <div class="form-group" id="priceGroup">
+        <label class="form-label">取得単価 (円)</label>
+        <input class="form-input" id="assetCostPrice" placeholder="2500" type="number" step="any">
+      </div>
+    </div>
+    <div class="form-group" id="manualPriceGroup" style="display:none">
+      <label class="form-label">現在価格 (円)</label>
+      <input class="form-input" id="assetManualPrice" placeholder="1" type="number" step="any">
+    </div>
+
+    <!-- 積立 -->
+    <div class="form-group" id="accumSection">
+      <div class="toggle-row">
+        <label class="toggle-switch">
+          <input type="checkbox" id="accumEnabled" onchange="onAccumChange()">
+          <span class="toggle-slider"></span>
+        </label>
+        <span style="font-size:14px;font-weight:500;">積立設定</span>
+      </div>
+      <div class="accum-fields" id="accumFields">
+        <div class="form-row" style="margin-top:10px;">
+          <div class="form-group">
+            <label class="form-label">毎月何日</label>
+            <input class="form-input" id="accumDay" placeholder="1〜28" type="number" min="1" max="28">
+          </div>
+          <div class="form-group">
+            <label class="form-label">積立金額 (円)</label>
+            <input class="form-input" id="accumAmount" placeholder="10000" type="number">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">積立開始日</label>
+          <input class="form-input" id="accumStart" type="date">
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="saveBtn" onclick="saveAsset()">追加する</button>
+    <button class="btn-secondary" onclick="closeModal('addModal')">キャンセル</button>
+  </div>
+</div>
+
+<!-- OWNER MANAGE MODAL -->
+<div class="modal-overlay" id="ownerModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">名義を管理</div>
+    <div id="ownerListEl"></div>
+    <div style="margin-top:16px;">
+      <div class="form-group">
+        <label class="form-label">名前</label>
+        <input class="form-input" id="newOwnerName" placeholder="例: こーすけ" type="text">
+      </div>
+      <div class="form-group">
+        <label class="form-label">カラー</label>
+        <div class="color-swatches" id="colorSwatches"></div>
+      </div>
+      <button class="btn-primary" onclick="addOwner()">名義を追加</button>
+    </div>
+    <button class="btn-secondary" onclick="closeModal('ownerModal')">閉じる</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== CONSTANTS ====================
+const OWNER_COLORS = ['#3ecf8e','#5b8dee','#f7c948','#e05c5c','#b478f0','#f08060','#60c8f0','#f060b4'];
+const TYPE_LABELS = {jp:'日本株',us:'米国株',crypto:'暗号資産',trust:'投資信託',cash:'現金・預金'};
+const TYPE_COLORS = {jp:'#5b8dee',us:'#3ecf8e',crypto:'#f7c948',trust:'#b478f0',cash:'#8a9bb5'};
+
+// ==================== STATE ====================
+let owners = [];   // [{id, name, color}]
+let assets = [];   // [{id, ownerId, type, name, ticker, qty, costPrice, manualPrice, accum, ...}]
+let history = [];
+let priceCache = {};
+let usdJpy = 155;
+let activeOwner = 'all'; // 'all' or ownerId
+let selectedColor = OWNER_COLORS[0];
+let editingId = null;
+
+// ==================== STORAGE ====================
+function load() {
+  try {
+    var storedAssets = localStorage.getItem('am_assets');
+    // localStorageが空またはファイル://アクセスの場合はPRESET_DATAを使用
+    if (!storedAssets || storedAssets === '[]' || storedAssets === 'null') {
+      owners    = JSON.parse(JSON.stringify(PRESET_DATA.owners));
+      assets    = JSON.parse(JSON.stringify(PRESET_DATA.assets));
+      history   = [];
+      priceCache= JSON.parse(JSON.stringify(PRESET_DATA.priceCache));
+      usdJpy    = PRESET_DATA.usdJpy || 155;
+      // localStorageに保存を試みる（失敗しても動作する）
+      try {
+        localStorage.setItem('am_owners',  JSON.stringify(owners));
+        localStorage.setItem('am_assets',  JSON.stringify(assets));
+        localStorage.setItem('am_history', '[]');
+        localStorage.setItem('am_prices',  JSON.stringify(priceCache));
+        localStorage.setItem('am_usdjpy',  String(usdJpy));
+      } catch(e2) { /* localStorageが使えない環境では無視 */ }
+    } else {
+      owners    = JSON.parse(storedAssets ? localStorage.getItem('am_owners') || '[]' : '[]');
+      assets    = JSON.parse(storedAssets || '[]');
+      history   = JSON.parse(localStorage.getItem('am_history') || '[]');
+      priceCache= JSON.parse(localStorage.getItem('am_prices') || '{}');
+      usdJpy    = parseFloat(localStorage.getItem('am_usdjpy') || '155');
+    }
+  } catch(e) {
+    // エラー時はPRESET_DATAにフォールバック
+    owners    = JSON.parse(JSON.stringify(PRESET_DATA.owners));
+    assets    = JSON.parse(JSON.stringify(PRESET_DATA.assets));
+    history   = [];
+    priceCache= JSON.parse(JSON.stringify(PRESET_DATA.priceCache));
+    usdJpy    = 155;
+  }
+  // デフォルト名義
+  if (owners.length === 0) {
+    owners.push({ id:'o1', name:'こーすけ', color: OWNER_COLORS[0] });
+  }
+}
+function save() {
+  localStorage.setItem('am_owners', JSON.stringify(owners));
+  localStorage.setItem('am_assets', JSON.stringify(assets));
+  localStorage.setItem('am_history', JSON.stringify(history));
+  localStorage.setItem('am_prices', JSON.stringify(priceCache));
+  localStorage.setItem('am_usdjpy', String(usdJpy));
+}
+
+// ==================== PRICE ====================
+async function fetchUsdJpy() {
+  try {
+    const r = await fetch('https://api.frankfurter.app/latest?from=USD&to=JPY');
+    const d = await r.json();
+    usdJpy = d.rates.JPY;
+  } catch(e) {}
+}
+async function fetchYahoo(ticker) {
+  try {
+    const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=2d`);
+    if (!r.ok) return null;
+    const d = await r.json();
+    const meta = d?.chart?.result?.[0]?.meta;
+    if (!meta) return null;
+    return { price: meta.regularMarketPrice, prevClose: meta.chartPreviousClose || meta.previousClose, currency: meta.currency };
+  } catch(e) { return null; }
+}
+async function fetchCrypto(coinId) {
+  try {
+    const r = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(coinId)}&vs_currencies=jpy&include_24hr_change=true`);
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (!d[coinId]) return null;
+    const price = d[coinId].jpy;
+    const chg = d[coinId].jpy_24h_change;
+    return { price, prevClose: price / (1 + chg/100), currency:'JPY' };
+  } catch(e) { return null; }
+}
+async function fetchAllPrices() {
+  await fetchUsdJpy();
+  // Deduplicate tickers
+  const tickerMap = {};
+  assets.forEach(a => {
+    if (a.ticker && a.type !== 'cash' && a.type !== 'trust') {
+      if (!tickerMap[a.ticker]) tickerMap[a.ticker] = { type: a.type, assetIds: [] };
+      tickerMap[a.ticker].assetIds.push(a.id);
+    }
+  });
+  await Promise.allSettled(Object.entries(tickerMap).map(async ([ticker, info]) => {
+    let data = info.type === 'crypto' ? await fetchCrypto(ticker) : await fetchYahoo(ticker);
+    if (!data) return;
+    let price = data.price, prev = data.prevClose;
+    if (data.currency === 'USD') { price *= usdJpy; prev *= usdJpy; }
+    // Share price across same-ticker assets
+    info.assetIds.forEach(id => {
+      priceCache[id] = { price, prevClose: prev, ts: Date.now(), live: true };
+    });
+  }));
+  save();
+}
+function getPrice(asset) {
+  if (asset.type === 'cash' || asset.type === 'trust') return { price: asset.manualPrice||0, prevClose: asset.manualPrice||0, live:false };
+  const c = priceCache[asset.id];
+  return c || { price: asset.manualPrice||0, prevClose: asset.manualPrice||0, live:false };
+}
+
+// ==================== ACCUM ====================
+function processAccum() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  assets.forEach(a => {
+    if (!a.accum?.enabled) return;
+    if (!a.accum.processed) a.accum.processed = {};
+    const start = new Date(a.accum.startDate);
+    let cur = new Date(start.getFullYear(), start.getMonth(), a.accum.day);
+    if (cur < start) cur = new Date(start.getFullYear(), start.getMonth()+1, a.accum.day);
+    while (cur <= today) {
+      const key = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}`;
+      if (!a.accum.processed[key]) {
+        const p = getPrice(a);
+        const addQty = p.price > 0 ? a.accum.amount / p.price : 0;
+        a.qty = (a.qty||0) + addQty;
+        a.accum.processed[key] = true;
+        history.unshift({ id: Date.now()+Math.random(), assetId: a.id, assetName: a.name, ownerId: a.ownerId, type:'accum', qty:addQty, amount:a.accum.amount, date:cur.toISOString().slice(0,10) });
+      }
+      cur = new Date(cur.getFullYear(), cur.getMonth()+1, a.accum.day);
+    }
+  });
+}
+
+// ==================== HELPERS ====================
+function fmt(n,d=0){ return (n===null||n===undefined||isNaN(n))?'—':n.toLocaleString('ja-JP',{minimumFractionDigits:d,maximumFractionDigits:d}); }
+function fmtJpy(n){ return (n===null||n===undefined)?'—':'¥'+fmt(Math.round(n)); }
+function fmtPct(n){ return (!n&&n!==0)?'—%':(n>=0?'+':'')+n.toFixed(2)+'%'; }
+function chipCls(n){ return n>0?'up':n<0?'down':'flat'; }
+function getOwner(id){ return owners.find(o=>o.id===id)||{name:'不明',color:'#888'}; }
+function filteredAssets(){ return activeOwner==='all' ? assets : assets.filter(a=>a.ownerId===activeOwner); }
+
+// ==================== RENDER ====================
+function renderAll() {
+  renderOwnerTabs();
+  renderHeader();
+  renderHoldings();
+  renderHistory();
+  updateSettingsInfo();
+}
+
+function renderOwnerTabs() {
+  const el = document.getElementById('ownerTabs');
+  let html = `<button class="owner-tab ${activeOwner==='all'?'active':''}" onclick="setOwner('all')">全員</button>`;
+  owners.forEach(o => {
+    const active = activeOwner===o.id ? 'active' : '';
+    html += `<button class="owner-tab ${active}" style="${active?'':'border-color:'+o.color+';color:'+o.color}" onclick="setOwner('${o.id}')">${o.name}</button>`;
+  });
+  el.innerHTML = html;
+  // Active tab custom color
+  if (activeOwner !== 'all') {
+    const o = getOwner(activeOwner);
+    const btn = el.querySelector('.owner-tab.active');
+    if (btn) { btn.style.background = o.color; btn.style.borderColor = o.color; btn.style.color = '#0f1923'; }
+  }
+}
+
+function renderHeader() {
+  const fa = filteredAssets();
+  let total=0, totalPrev=0;
+  fa.forEach(a => {
+    const p = getPrice(a);
+    total += (a.qty||0)*(p.price||0);
+    totalPrev += (a.qty||0)*(p.prevClose||p.price||0);
+  });
+  const chgAmt = total - totalPrev;
+  const chgPct = totalPrev > 0 ? (chgAmt/totalPrev*100) : 0;
+  const cls = chipCls(chgAmt);
+
+  const ownerName = activeOwner==='all' ? '全員' : getOwner(activeOwner).name;
+  document.getElementById('totalLabel').textContent = `総資産（${ownerName}）`;
+  document.getElementById('totalValue').textContent = fmtJpy(total);
+  const amtEl = document.getElementById('totalChangeAmt');
+  const pctEl = document.getElementById('totalChangePct');
+  amtEl.className = `chip ${cls}`; amtEl.textContent = (chgAmt>=0?'+':'')+fmtJpy(chgAmt);
+  pctEl.className = `chip ${cls}`; pctEl.textContent = fmtPct(chgPct);
+  const now = new Date();
+  document.getElementById('lastUpdated').textContent = `${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}更新`;
+}
+
+function renderHoldings() {
+  const fa = filteredAssets();
+  // Alloc bar
+  const totals={};
+  let grand=0;
+  fa.forEach(a => {
+    const p=getPrice(a), val=(a.qty||0)*(p.price||0);
+    totals[a.type]=(totals[a.type]||0)+val; grand+=val;
+  });
+  const barEl=document.getElementById('allocBar'), legEl=document.getElementById('allocLegend');
+  barEl.innerHTML=''; legEl.innerHTML='';
+  Object.entries(totals).sort((a,b)=>b[1]-a[1]).forEach(([type,val])=>{
+    if(val<=0) return;
+    const pct=grand>0?(val/grand*100):0;
+    const seg=document.createElement('div');
+    seg.className='alloc-segment';
+    seg.style.cssText=`width:${pct}%;background:${TYPE_COLORS[type]};`;
+    barEl.appendChild(seg);
+    const leg=document.createElement('div');
+    leg.className='legend-item';
+    leg.innerHTML=`<span class="legend-dot" style="background:${TYPE_COLORS[type]}"></span>${TYPE_LABELS[type]} ${pct.toFixed(1)}%`;
+    legEl.appendChild(leg);
+  });
+
+  // Owner summary (only when 'all')
+  const summaryEl = document.getElementById('ownerSummarySection');
+  if (activeOwner === 'all' && owners.length > 1) {
+    let html = '<div class="section-title">名義別サマリー</div><div class="owner-summary-grid">';
+    owners.forEach(o => {
+      const oa = assets.filter(a=>a.ownerId===o.id);
+      let t=0, tp=0;
+      oa.forEach(a=>{ const p=getPrice(a); t+=(a.qty||0)*(p.price||0); tp+=(a.qty||0)*(p.prevClose||p.price||0); });
+      const chg=t-tp, pct=tp>0?(chg/tp*100):0, cls=chipCls(chg);
+      html+=`<div class="owner-summary-card" onclick="setOwner('${o.id}')">
+        <div class="osc-name"><span class="osc-dot" style="background:${o.color}"></span>${o.name}</div>
+        <div class="osc-total">${fmtJpy(t)}</div>
+        <div class="osc-change ${cls}">${chg>=0?'+':''}${fmtJpy(chg)} (${fmtPct(pct)})</div>
+      </div>`;
+    });
+    html += '</div>';
+    summaryEl.innerHTML = html;
+  } else {
+    summaryEl.innerHTML = '';
+  }
+
+  // Holdings list
+  const listEl = document.getElementById('holdingsList');
+  if (fa.length === 0) {
+    listEl.innerHTML = `<div class="empty"><div class="empty-icon">📈</div><div class="empty-text">右下の＋ボタンで銘柄を追加してください</div></div>`;
+    return;
+  }
+
+  // Group by type
+  const groups={};
+  fa.forEach(a=>{ if(!groups[a.type]) groups[a.type]=[]; groups[a.type].push(a); });
+  let html='';
+  ['us','jp','crypto','trust','cash'].forEach(type=>{
+    if(!groups[type]) return;
+    html+=`<div class="section-group"><div class="section-title">${TYPE_LABELS[type]}</div>`;
+    groups[type].forEach(a=>{
+      const p=getPrice(a), val=(a.qty||0)*(p.price||0);
+      const costVal=(a.qty||0)*(a.costPrice||0);
+      const gain=val-costVal, gainPct=costVal>0?(gain/costVal*100):0;
+      const dayChg=(a.qty||0)*((p.price||0)-(p.prevClose||p.price||0));
+      const dayPct=p.prevClose>0?((p.price-p.prevClose)/p.prevClose*100):0;
+      const owner=getOwner(a.ownerId);
+      const showOwner=activeOwner==='all';
+      html+=`<div class="card">
+        <div class="card-header">
+          <div class="card-title-row">
+            <span class="card-name">${a.name}</span>
+            <div class="card-badges">
+              ${showOwner?`<span class="badge badge-owner" style="background:${owner.color}22;color:${owner.color}">${owner.name}</span>`:''}
+              ${a.accum?.enabled?`<span class="badge-accum">積立 毎月${a.accum.day}日</span>`:''}
+              ${p.live?'<span class="badge-live">LIVE</span>':'<span class="badge-manual">手動</span>'}
+            </div>
+          </div>
+          <span class="badge badge-type-${type}">${TYPE_LABELS[type]}</span>
+        </div>
+        <div class="card-body">
+          <div><div class="stat-label">評価額</div><div class="stat-value">${fmtJpy(val)}</div></div>
+          <div><div class="stat-label">損益</div><div class="stat-value ${chipCls(gain)}">${gain>=0?'+':''}${fmtJpy(gain)}<br><span style="font-size:11px">${fmtPct(gainPct)}</span></div></div>
+          <div><div class="stat-label">${a.type==='trust'?'基準価額(円/口)':'現在価格'}</div><div class="stat-value">${a.type==='trust'?fmt(p.price,4)+'円':type==='cash'?'—':fmtJpy(p.price)}</div></div>
+          <div><div class="stat-label">前日比</div><div class="stat-value ${chipCls(dayChg)}">${dayChg>=0?'+':''}${fmtJpy(dayChg)}<br><span style="font-size:11px">${fmtPct(dayPct)}</span></div></div>
+        </div>
+        <div class="card-footer">
+          <div class="card-meta">
+            <span class="card-code">${a.ticker||'—'}</span>
+            <span class="card-qty">${fmt(a.qty,a.type==='crypto'?6:2)}${type==='cash'?'円':'口/株'}</span>
+          </div>
+          <div class="card-actions">
+            <button class="icon-btn" onclick="openEditModal('${a.id}')">✏️</button>
+            <button class="icon-btn" onclick="deleteAsset('${a.id}')">🗑️</button>
+          </div>
+        </div>
+      </div>`;
+    });
+    html+='</div>';
+  });
+  listEl.innerHTML=html;
+}
+
+function renderHistory() {
+  const el=document.getElementById('historyList');
+  const fa=filteredAssets().map(a=>a.id);
+  const filtered=history.filter(h=>activeOwner==='all'||fa.includes(h.assetId));
+  if(filtered.length===0){
+    el.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">まだ履歴はありません</div></div>`;
+    return;
+  }
+  const typeMap={accum:'積立',add:'追加',edit:'編集',delete:'削除'};
+  let html='';
+  filtered.slice(0,100).forEach(h=>{
+    const owner=h.ownerId?getOwner(h.ownerId):null;
+    const ownerBadge=owner?`<span style="font-size:10px;color:${owner.color}">· ${owner.name}</span>`:'';
+    html+=`<div class="history-item">
+      <div>
+        <div class="history-name">${h.assetName} ${ownerBadge}</div>
+        <div class="history-sub">${typeMap[h.type]||h.type}${h.qty?` · ${fmt(h.qty,4)}口`:''}${h.amount?` · ${fmtJpy(h.amount)}`:''}</div>
+        <div class="history-date">${h.date}</div>
+      </div>
+      <div class="history-amt ${h.amount>0?'up':h.amount<0?'down':''}">${h.amount?fmtJpy(h.amount):'—'}</div>
+    </div>`;
+  });
+  el.innerHTML=html;
+}
+
+function updateSettingsInfo() {
+  document.getElementById('ownerCount').textContent = `現在 ${owners.length} 名義 · タップして管理`;
+}
+
+// ==================== OWNER FILTER ====================
+function setOwner(id) {
+  activeOwner = id;
+  renderAll();
+}
+
+// ==================== OWNER MODAL ====================
+function openOwnerModal() {
+  renderOwnerList();
+  renderColorSwatches();
+  document.getElementById('ownerModal').classList.add('open');
+}
+function renderOwnerList() {
+  const el=document.getElementById('ownerListEl');
+  if(owners.length===0){ el.innerHTML='<div style="color:var(--text3);font-size:13px;margin-bottom:8px">名義がありません</div>'; return; }
+  let html='';
+  owners.forEach(o=>{
+    const count=assets.filter(a=>a.ownerId===o.id).length;
+    html+=`<div class="owner-list-item">
+      <div class="owner-list-name">
+        <span class="owner-color-dot" style="background:${o.color}"></span>
+        ${o.name} <span style="font-size:11px;color:var(--text3)">(${count}件)</span>
+      </div>
+      ${owners.length>1?`<button class="owner-delete-btn" onclick="deleteOwner('${o.id}')">✕</button>`:''}
+    </div>`;
+  });
+  el.innerHTML=html;
+}
+function renderColorSwatches() {
+  const el=document.getElementById('colorSwatches');
+  el.innerHTML=OWNER_COLORS.map(c=>`<div class="swatch ${c===selectedColor?'selected':''}" style="background:${c}" onclick="selectColor('${c}')"></div>`).join('');
+}
+function selectColor(c) {
+  selectedColor=c;
+  renderColorSwatches();
+}
+function addOwner() {
+  const name=document.getElementById('newOwnerName').value.trim();
+  if(!name){ showToast('名前を入力してください'); return; }
+  if(owners.find(o=>o.name===name)){ showToast('同じ名前がすでに存在します'); return; }
+  owners.push({ id:'o'+Date.now(), name, color:selectedColor });
+  document.getElementById('newOwnerName').value='';
+  selectedColor=OWNER_COLORS[(owners.length)%OWNER_COLORS.length];
+  save(); renderOwnerList(); renderColorSwatches(); renderOwnerTabs(); updateSettingsInfo();
+  showToast(`「${name}」を追加しました`);
+}
+function deleteOwner(id) {
+  const o=getOwner(id);
+  const count=assets.filter(a=>a.ownerId===id).length;
+  if(count>0){ showToast(`${o.name}には銘柄が${count}件あります。先に銘柄を削除してください`); return; }
+  if(!confirm(`「${o.name}」を削除しますか？`)) return;
+  owners=owners.filter(x=>x.id!==id);
+  if(activeOwner===id) activeOwner='all';
+  save(); renderOwnerList(); renderAll();
+}
+
+// ==================== ASSET MODAL ====================
+function populateOwnerSelect(selectedId) {
+  const el=document.getElementById('assetOwner');
+  el.innerHTML=owners.map(o=>`<option value="${o.id}" ${o.id===selectedId?'selected':''}>${o.name}</option>`).join('');
+}
+
+function openAddModal() {
+  editingId=null;
+  document.getElementById('modalTitle').textContent='銘柄を追加';
+  document.getElementById('saveBtn').textContent='追加する';
+  clearForm();
+  // Pre-select current filter owner
+  const defaultOwner = activeOwner !== 'all' ? activeOwner : owners[0]?.id;
+  populateOwnerSelect(defaultOwner);
+  document.getElementById('accumStart').value=new Date().toISOString().slice(0,10);
+  populateExistingAssets();
+  document.getElementById('existingAsset').value = '';
+  document.getElementById('addModal').classList.add('open');
+}
+
+function openEditModal(id) {
+  const a=assets.find(x=>x.id===id); if(!a) return;
+  editingId=id;
+  document.getElementById('modalTitle').textContent='銘柄を編集';
+  document.getElementById('saveBtn').textContent='保存する';
+  populateOwnerSelect(a.ownerId);
+  document.getElementById('assetType').value=a.type;
+  document.getElementById('assetName').value=a.name;
+  document.getElementById('assetTicker').value=a.ticker||'';
+  document.getElementById('assetQty').value=a.qty||'';
+  document.getElementById('assetCostPrice').value=a.costPrice||'';
+  document.getElementById('assetManualPrice').value=a.manualPrice||'';
+  if(a.accum?.enabled){
+    document.getElementById('accumEnabled').checked=true;
+    document.getElementById('accumFields').classList.add('visible');
+    document.getElementById('accumDay').value=a.accum.day||'';
+    document.getElementById('accumAmount').value=a.accum.amount||'';
+    document.getElementById('accumStart').value=a.accum.startDate||'';
+  } else {
+    document.getElementById('accumEnabled').checked=false;
+    document.getElementById('accumFields').classList.remove('visible');
+  }
+  onTypeChange();
+  document.getElementById('addModal').classList.add('open');
+}
+
+function clearForm() {
+  ['assetName','assetTicker','assetQty','assetCostPrice','assetManualPrice','accumDay','accumAmount'].forEach(id=>{document.getElementById(id).value='';});
+  document.getElementById('assetType').value='jp';
+  document.getElementById('accumEnabled').checked=false;
+  document.getElementById('accumFields').classList.remove('visible');
+  onTypeChange();
+}
+
+function onTypeChange() {
+  const type=document.getElementById('assetType').value;
+  const isCash=type==='cash', isTrust=type==='trust';
+  document.getElementById('tickerGroup').style.display=(isCash||isTrust)?'none':'';
+  document.getElementById('manualPriceGroup').style.display=(isCash||isTrust)?'':'none';
+  document.getElementById('priceGroup').style.display=isCash?'none':'';
+  document.getElementById('accumSection').style.display=isCash?'none':'';
+  const hints={jp:'日本株: 7203.T / 9984.T (末尾に .T)',us:'米国株: AAPL / NVDA / MSFT',crypto:'暗号資産: bitcoin / ethereum / solana (CoinGecko ID)'};
+  if(hints[type]) document.getElementById('tickerHint').textContent=hints[type];
+  document.getElementById('qtyLabel').textContent={jp:'保有株数',us:'保有株数',crypto:'保有数量（枚）',trust:'保有口数',cash:'金額（円）'}[type];
+}
+
+function onAccumChange() {
+  document.getElementById('accumFields').classList.toggle('visible',document.getElementById('accumEnabled').checked);
+}
+
+function saveAsset() {
+  const ownerId=document.getElementById('assetOwner').value;
+  const type=document.getElementById('assetType').value;
+  const name=document.getElementById('assetName').value.trim();
+  const ticker=document.getElementById('assetTicker').value.trim();
+  const qty=parseFloat(document.getElementById('assetQty').value)||0;
+  const costPrice=parseFloat(document.getElementById('assetCostPrice').value)||0;
+  const manualPrice=parseFloat(document.getElementById('assetManualPrice').value)||0;
+  const accumEnabled=document.getElementById('accumEnabled').checked;
+  const accumDay=parseInt(document.getElementById('accumDay').value)||1;
+  const accumAmount=parseFloat(document.getElementById('accumAmount').value)||0;
+  const accumStart=document.getElementById('accumStart').value;
+
+  if(!name){ showToast('銘柄名を入力してください'); return; }
+
+  const accumData={ enabled:accumEnabled, day:accumDay, amount:accumAmount, startDate:accumStart };
+
+  if(editingId){
+    const idx=assets.findIndex(a=>a.id===editingId);
+    if(idx>=0){
+      accumData.processed=assets[idx].accum?.processed||{};
+      assets[idx]={...assets[idx],ownerId,type,name,ticker,qty,costPrice,manualPrice,accum:accumData};
+      history.unshift({id:Date.now(),assetId:editingId,assetName:name,ownerId,type:'edit',date:new Date().toISOString().slice(0,10)});
+    }
+  } else {
+    const id='a'+Date.now();
+    accumData.processed={};
+    assets.push({id,ownerId,type,name,ticker,qty,costPrice,manualPrice,accum:accumData,createdAt:new Date().toISOString()});
+    history.unshift({id:Date.now(),assetId:id,assetName:name,ownerId,type:'add',amount:qty*costPrice,date:new Date().toISOString().slice(0,10)});
+  }
+  processAccum(); save(); renderAll();
+  closeModal('addModal');
+  showToast(editingId?'更新しました':'追加しました');
+}
+
+function deleteAsset(id) {
+  const a=assets.find(x=>x.id===id); if(!a) return;
+  if(!confirm(`「${a.name}」を削除しますか？`)) return;
+  assets=assets.filter(x=>x.id!==id);
+  history.unshift({id:Date.now(),assetId:id,assetName:a.name,ownerId:a.ownerId,type:'delete',date:new Date().toISOString().slice(0,10)});
+  save(); renderAll();
+  showToast('削除しました');
+}
+
+// ==================== REFRESH ====================
+async function refreshAll() {
+  const btn=document.getElementById('refreshBtn');
+  btn.classList.add('spinning');
+  await fetchAllPrices();
+  processAccum(); save(); renderAll();
+  btn.classList.remove('spinning');
+  showToast('価格を更新しました');
+}
+
+// ==================== IMPORT/EXPORT ====================
+function exportData() {
+  const blob=new Blob([JSON.stringify({owners,assets,history,priceCache,usdJpy,exportedAt:new Date().toISOString()},null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=`family_assets_${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(url);
+}
+function importData(e) {
+  const file=e.target.files[0]; if(!file) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const d=JSON.parse(ev.target.result);
+      if(d.owners) owners=d.owners;
+      if(d.assets) assets=d.assets;
+      if(d.history) history=d.history;
+      if(d.priceCache) priceCache=d.priceCache;
+      save(); renderAll(); showToast('インポートしました');
+    }catch{ showToast('読み込みに失敗しました'); }
+  };
+  r.readAsText(file); e.target.value='';
+}
+function importCSV(e) {
+  const file=e.target.files[0]; if(!file) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const lines=ev.target.result.split('\n');
+      let updated=0;
+      lines.forEach(line=>{
+        const cols=line.split(',').map(c=>c.trim().replace(/"/g,''));
+        const code=cols[0], qty=parseFloat(cols[2]);
+        if(!code||isNaN(qty)) return;
+        const targetOwner=activeOwner!=='all'?activeOwner:null;
+        assets.forEach(a=>{
+          if(a.ticker&&a.ticker.replace('.T','')===code.replace('.T','')){
+            if(!targetOwner||a.ownerId===targetOwner){ a.qty=qty; updated++; }
+          }
+        });
+      });
+      save(); renderAll(); showToast(`${updated}件の数量を更新しました`);
+    }catch{ showToast('CSV読み込みに失敗しました'); }
+  };
+  r.readAsText(file,'Shift-JIS'); e.target.value='';
+}
+function clearAllData() {
+  owners    = JSON.parse(JSON.stringify(PRESET_DATA.owners));
+  assets    = JSON.parse(JSON.stringify(PRESET_DATA.assets));
+  history   = [];
+  priceCache= JSON.parse(JSON.stringify(PRESET_DATA.priceCache));
+  activeOwner = 'all';
+  save(); renderAll(); showToast('データを初期状態に戻しました');
+}
+
+// ==================== UI UTILS ====================
+function switchPage(name) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(`page-${name}`).classList.add('active');
+  document.getElementById(`nav-${name}`).classList.add('active');
+  document.getElementById('fab').style.display=name==='holdings'?'':'none';
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function showToast(msg) {
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// Close on overlay click
+['addModal','ownerModal'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',function(e){ if(e.target===this) closeModal(id); });
+});
+
+// ==================== EXISTING ASSET PICKER ====================
+function populateExistingAssets() {
+  const sel = document.getElementById('existingAsset');
+  if (!sel) return;
+  // 重複排除：銘柄名+タイプでユニーク化
+  const seen = new Set();
+  const unique = [];
+  assets.forEach(a => {
+    const key = a.name + '|' + a.type;
+    if (!seen.has(key)) { seen.add(key); unique.push(a); }
+  });
+  // タイプ順でソート
+  const typeOrder = ['us','jp','crypto','trust','cash'];
+  unique.sort((a,b) => typeOrder.indexOf(a.type) - typeOrder.indexOf(b.type));
+
+  sel.innerHTML = '<option value="">── 新規入力する ──</option>';
+  unique.forEach(a => {
+    const opt = document.createElement('option');
+    opt.value = a.id; // 参照元IDを使う
+    opt.textContent = `[${TYPE_LABELS[a.type]}] ${a.name}${a.ticker ? ' ('+a.ticker+')' : ''}`;
+    sel.appendChild(opt);
+  });
+}
+
+function onExistingAssetChange() {
+  const sel = document.getElementById('existingAsset');
+  const refId = sel.value;
+  if (!refId) {
+    // 新規入力モードに戻す
+    clearFormFields();
+    return;
+  }
+  const ref = assets.find(a => a.id === refId);
+  if (!ref) return;
+  // タイプと銘柄名・ティッカーだけ転記（数量・単価はクリア）
+  document.getElementById('assetType').value = ref.type;
+  document.getElementById('assetName').value = ref.name;
+  document.getElementById('assetTicker').value = ref.ticker || '';
+  document.getElementById('assetQty').value = '';
+  document.getElementById('assetCostPrice').value = '';
+  document.getElementById('assetManualPrice').value = '';
+  document.getElementById('accumEnabled').checked = false;
+  document.getElementById('accumFields').classList.remove('visible');
+  onTypeChange();
+}
+
+function clearFormFields() {
+  ['assetName','assetTicker','assetQty','assetCostPrice','assetManualPrice','accumDay','accumAmount'].forEach(id=>{
+    document.getElementById(id).value='';
+  });
+  document.getElementById('assetType').value='jp';
+  document.getElementById('accumEnabled').checked=false;
+  document.getElementById('accumFields').classList.remove('visible');
+  onTypeChange();
+}
+
+// ==================== INIT ====================
+
+// ==================== FAB MENU ====================
+function openFabMenu() {
+  const menu = document.getElementById('fabMenu');
+  const overlay = document.getElementById('fabOverlay');
+  menu.style.display = 'flex';
+  overlay.style.display = 'block';
+}
+function closeFabMenu() {
+  document.getElementById('fabMenu').style.display = 'none';
+  document.getElementById('fabOverlay').style.display = 'none';
+}
+
+// ==================== API KEY ====================
+function getApiKey() { return localStorage.getItem('am_apikey') || ''; }
+function saveApiKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (!key.startsWith('sk-')) { showToast('有効なAPIキーを入力してください'); return; }
+  localStorage.setItem('am_apikey', key);
+  updateApiKeyStatus();
+  closeModal('apiKeyModal');
+  showToast('APIキーを保存しました');
+}
+function openApiKeyModal() {
+  const key = getApiKey();
+  document.getElementById('apiKeyInput').value = key;
+  document.getElementById('apiKeyModal').classList.add('open');
+}
+function updateApiKeyStatus() {
+  const key = getApiKey();
+  const el = document.getElementById('apiKeyStatus');
+  if (el) el.textContent = key ? '設定済み ✓' : '未設定（スキャン機能に必要）';
+}
+
+// ==================== SCAN ====================
+let scanImageBase64 = null;
+let scannedResults = [];
+
+function openScanModal() {
+  const key = getApiKey();
+  if (!key) {
+    if (confirm('Claude APIキーが未設定です。今すぐ設定しますか？')) {
+      openApiKeyModal();
+    }
+    return;
+  }
+  resetScan();
+  // Populate owner select
+  const sel = document.getElementById('scanOwner');
+  sel.innerHTML = owners.map(o => `<option value="${o.id}">${o.name}</option>`).join('');
+  if (activeOwner !== 'all') sel.value = activeOwner;
+  document.getElementById('scanModal').classList.add('open');
+}
+
+function resetScan() {
+  scanImageBase64 = null;
+  scannedResults = [];
+  setScanStep(1);
+  document.getElementById('scanPreview').style.display = 'none';
+  document.getElementById('scanPreview').src = '';
+  document.getElementById('scanDropZone').style.display = '';
+  document.getElementById('scanAnalyzeBtn').disabled = true;
+  document.getElementById('scanAnalyzeBtn').style.opacity = '.4';
+  document.getElementById('scanFileInput').value = '';
+  document.getElementById('scanResultList').innerHTML = '';
+  document.getElementById('scanError').style.display = 'none';
+}
+
+function setScanStep(n) {
+  [1,2,3].forEach(i => {
+    document.getElementById(`scanStep${i}`).classList.toggle('active', i === n);
+    const dot = document.getElementById(`sdot${i}`);
+    dot.className = 'scan-step-dot ' + (i < n ? 'done' : i === n ? 'active' : 'pending');
+  });
+  [1,2].forEach(i => {
+    const line = document.getElementById(`sline${i}`);
+    line.className = 'scan-step-line' + (i < n ? ' done' : '');
+  });
+}
+
+function onScanImageSelected(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const dataUrl = ev.target.result;
+    scanImageBase64 = dataUrl.split(',')[1];
+    const preview = document.getElementById('scanPreview');
+    preview.src = dataUrl;
+    preview.style.display = 'block';
+    document.getElementById('scanDropZone').style.display = 'none';
+    document.getElementById('scanAnalyzeBtn').disabled = false;
+    document.getElementById('scanAnalyzeBtn').style.opacity = '1';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function startAnalysis() {
+  if (!scanImageBase64) return;
+  const apiKey = getApiKey();
+  if (!apiKey) { showToast('APIキーが未設定です'); return; }
+
+  setScanStep(2);
+  document.getElementById('analyzingText').textContent = '画像を解析しています…';
+
+  const broker = document.getElementById('scanBroker').value;
+  const brokerHint = broker === 'rakuten' ? '楽天証券' : broker === 'sbi' ? 'SBI証券' : '証券会社';
+
+  const prompt = `これは${brokerHint}の保有資産一覧またはポートフォリオ画面のスクリーンショットです。
+画面に表示されているすべての保有銘柄を読み取り、以下のJSON形式で返してください。
+
+必ずJSONのみを返し、説明文や\`\`\`は不要です。
+
+{
+  "assets": [
+    {
+      "name": "銘柄名（正式名称）",
+      "type": "jp|us|crypto|trust|cash のいずれか",
+      "ticker": "ティッカー/証券コード（日本株は数字4桁.T形式、米国株はアルファベット、投資信託は空文字、暗号資産はCoinGecko ID）",
+      "qty": 保有数量（数値）,
+      "costPrice": 取得単価または平均取得価格（円、数値）,
+      "currentPrice": 現在の基準価額または株価（円、数値）,
+      "note": "読み取れなかった項目があれば記載"
+    }
+  ]
+}
+
+判断基準：
+- 投資信託（〜ファンド、eMAXIS、楽天・〜等）→ type: trust
+- 日本株（4桁の証券コード）→ type: jp、tickerは「1234.T」形式
+- 米国株（英字ティッカー）→ type: us
+- 暗号資産（BTC/ETH等）→ type: crypto
+- 読み取れない数値は0とする`;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 2000,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: scanImageBase64 } },
+            { type: 'text', text: prompt }
+          ]
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error?.message || `API Error ${response.status}`);
+    }
+
+    const data = await response.json();
+    const text = data.content.map(c => c.text || '').join('');
+    // Parse JSON (strip markdown fences if present)
+    const clean = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+
+    if (!parsed.assets || parsed.assets.length === 0) {
+      throw new Error('銘柄が検出できませんでした。別の画面をお試しください。');
+    }
+
+    scannedResults = parsed.assets;
+    renderScanResults();
+    setScanStep(3);
+
+  } catch(e) {
+    setScanStep(1);
+    document.getElementById('scanAnalyzeBtn').disabled = false;
+    document.getElementById('scanAnalyzeBtn').style.opacity = '1';
+    showToast('解析エラー: ' + e.message.slice(0, 40));
+  }
+}
+
+function renderScanResults() {
+  const el = document.getElementById('scanResultList');
+  el.innerHTML = scannedResults.map((a, i) => `
+    <div class="scan-result-item">
+      <div class="scan-result-header">
+        <span class="scan-result-name">${a.name}</span>
+        <input type="checkbox" class="scan-result-check" id="scanCheck${i}" checked>
+      </div>
+      <div class="scan-result-grid">
+        <div class="scan-result-field">
+          <span class="scan-result-label">タイプ</span>
+          <select class="scan-type-select" id="scanType${i}">
+            <option value="jp" ${a.type==='jp'?'selected':''}>日本株</option>
+            <option value="us" ${a.type==='us'?'selected':''}>米国株</option>
+            <option value="crypto" ${a.type==='crypto'?'selected':''}>暗号資産</option>
+            <option value="trust" ${a.type==='trust'?'selected':''}>投資信託</option>
+            <option value="cash" ${a.type==='cash'?'selected':''}>現金</option>
+          </select>
+        </div>
+        <div class="scan-result-field">
+          <span class="scan-result-label">ティッカー/コード</span>
+          <input class="scan-result-input" id="scanTicker${i}" value="${a.ticker||''}" placeholder="7203.T / AAPL">
+        </div>
+        <div class="scan-result-field">
+          <span class="scan-result-label">保有数量</span>
+          <input class="scan-result-input" id="scanQty${i}" type="number" value="${a.qty||0}" step="any">
+        </div>
+        <div class="scan-result-field">
+          <span class="scan-result-label">取得単価(円)</span>
+          <input class="scan-result-input" id="scanCost${i}" type="number" value="${a.costPrice||0}" step="any">
+        </div>
+        <div class="scan-result-field" style="grid-column:1/-1">
+          <span class="scan-result-label">現在価格(円)${a.type==='trust'?'・投信は基準価額':''}</span>
+          <input class="scan-result-input" id="scanPrice${i}" type="number" value="${a.currentPrice||0}" step="any">
+        </div>
+        ${a.note ? `<div style="grid-column:1/-1;font-size:10px;color:var(--warn);margin-top:4px;">⚠ ${a.note}</div>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function registerScannedAssets() {
+  const ownerId = document.getElementById('scanOwner').value;
+  let count = 0;
+  scannedResults.forEach((a, i) => {
+    if (!document.getElementById(`scanCheck${i}`).checked) return;
+    const type = document.getElementById(`scanType${i}`).value;
+    const ticker = document.getElementById(`scanTicker${i}`).value.trim();
+    const qty = parseFloat(document.getElementById(`scanQty${i}`).value) || 0;
+    const costPrice = parseFloat(document.getElementById(`scanCost${i}`).value) || 0;
+    const currentPrice = parseFloat(document.getElementById(`scanPrice${i}`).value) || 0;
+    const id = 'a' + Date.now() + i;
+    assets.push({
+      id, ownerId, type, name: a.name, ticker, qty, costPrice,
+      manualPrice: currentPrice,
+      accum: { enabled: false, day: 1, amount: 0, startDate: new Date().toISOString().slice(0,10), processed: {} },
+      createdAt: new Date().toISOString()
+    });
+    // Priceキャッシュに現在価格をセット
+    if (currentPrice > 0) {
+      priceCache[id] = { price: currentPrice, prevClose: currentPrice, ts: Date.now(), live: false };
+    }
+    history.unshift({ id: Date.now()+i, assetId: id, assetName: a.name, ownerId, type: 'add', amount: qty * costPrice, date: new Date().toISOString().slice(0,10) });
+    count++;
+  });
+  processAccum();
+  save();
+  renderAll();
+  closeModal('scanModal');
+  showToast(`${count}件の銘柄を登録しました`);
+  // Fetch live prices for stocks
+  setTimeout(() => refreshAll(), 500);
+}
+
+async function init() {
+  load(); processAccum(); renderAll();
+  updateApiKeyStatus();
+  await fetchAllPrices();
+  processAccum(); save(); renderAll();
+}
+init();
+setInterval(()=>{ if(document.visibilityState==='visible') refreshAll(); },5*60*1000);
+</script>
+</body>
+</html>
