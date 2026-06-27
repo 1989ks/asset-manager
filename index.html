@@ -440,7 +440,7 @@ var PRESET_DATA = {"owners": [{"id": "o1", "name": "こーすけ", "color": "#3e
     <div class="form-group" id="tickerGroup">
       <label class="form-label" id="tickerLabel">ティッカー / コード</label>
       <input class="form-input" id="assetTicker" placeholder="例: 7203.T" type="text">
-      <div style="font-size:10px;color:var(--text3);margin-top:4px;" id="tickerHint">日本株: 7203.T　米国株: AAPL　暗号資産: bitcoin</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px;" id="tickerHint">日本株: 7203.T　米国株: AAPL　暗号資産: bitcoin (CoinGecko ID)</div>
     </div>
     <div class="form-row">
       <div class="form-group">
@@ -453,7 +453,7 @@ var PRESET_DATA = {"owners": [{"id": "o1", "name": "こーすけ", "color": "#3e
       </div>
     </div>
     <div class="form-group" id="manualPriceGroup" style="display:none">
-      <label class="form-label">現在価格 (円)</label>
+      <label class="form-label" id="manualPriceLabel">現在価格 (円) ※株・暗号資産は追加後⟳で自動更新</label>
       <input class="form-input" id="assetManualPrice" placeholder="1" type="number" step="any">
     </div>
 
@@ -1107,7 +1107,8 @@ function onTypeChange() {
   const type=document.getElementById('assetType').value;
   const isCash=type==='cash', isTrust=type==='trust';
   document.getElementById('tickerGroup').style.display=(isCash||isTrust)?'none':'';
-  document.getElementById('manualPriceGroup').style.display=(isCash||isTrust)?'':'none';
+  // 現在価格入力：現金・投信はmanualPrice入力、暗号資産・株は初期価格として任意入力
+  document.getElementById('manualPriceGroup').style.display=(isCash||isTrust)?'':'';
   document.getElementById('priceGroup').style.display=isCash?'none':'';
   document.getElementById('accumSection').style.display=isCash?'none':'';
   const hints={jp:'日本株: 7203.T / 9984.T (末尾に .T)',us:'米国株: AAPL / NVDA / MSFT',crypto:'暗号資産: bitcoin / ethereum / solana (CoinGecko ID)'};
@@ -1174,14 +1175,31 @@ function saveAsset() {
   } else {
     const id='a'+Date.now();
     accumData.processed={};
-    assets.push({id,ownerId,type,name,ticker,qty,costPrice,manualPrice,accum:accumData,
+    const newAsset = {id,ownerId,type,name,ticker,qty,costPrice,manualPrice,accum:accumData,
       lending:{enabled:lendingEnabled,apr:lendingApr,startDate:lendingStart,lastProcessed:null},
-      createdAt:new Date().toISOString()});
+      createdAt:new Date().toISOString()};
+    assets.push(newAsset);
+    // 即時priceCache登録（manualPriceが0でも仮登録）
+    priceCache[id] = { price: manualPrice||costPrice||0, prevClose: manualPrice||costPrice||0, ts: Date.now(), live: false };
     history.unshift({id:Date.now(),assetId:id,assetName:name,ownerId,type:'add',amount:qty*costPrice,date:new Date().toISOString().slice(0,10)});
   }
+  // 新規追加・編集後にpriceCacheを即時更新
+  assets.forEach(a => {
+    if (!priceCache[a.id] || !priceCache[a.id].live) {
+      // tickerなし or まだ価格未取得の場合はmanualPriceをセット
+      if (a.manualPrice > 0) {
+        priceCache[a.id] = { price: a.manualPrice, prevClose: a.manualPrice, ts: Date.now(), live: false };
+      }
+    }
+  });
   processAccum(); save(); renderAll();
   closeModal('addModal');
   showToast(editingId?'更新しました':'追加しました');
+  // tickerがある場合は価格を自動取得
+  const savedAsset = editingId ? assets.find(a=>a.id===editingId) : assets[assets.length-1];
+  if (savedAsset && savedAsset.ticker) {
+    setTimeout(() => refreshAll(), 500);
+  }
 }
 
 function deleteAsset(id) {
@@ -1197,10 +1215,22 @@ function deleteAsset(id) {
 async function refreshAll() {
   const btn=document.getElementById('refreshBtn');
   btn.classList.add('spinning');
-  await fetchAllPrices();
-  processAccum(); save(); renderAll();
-  btn.classList.remove('spinning');
-  showToast('価格を更新しました');
+  try {
+    await fetchAllPrices();
+    processAccum();
+    // priceCacheにないassetをmanualPriceで補完
+    assets.forEach(a => {
+      if (!priceCache[a.id] && a.manualPrice > 0) {
+        priceCache[a.id] = { price: a.manualPrice, prevClose: a.manualPrice, ts: Date.now(), live: false };
+      }
+    });
+    save(); renderAll();
+    btn.classList.remove('spinning');
+    showToast('価格を更新しました');
+  } catch(e) {
+    btn.classList.remove('spinning');
+    showToast('更新エラー: ' + e.message.slice(0,30));
+  }
 }
 
 // ==================== IMPORT/EXPORT ====================
