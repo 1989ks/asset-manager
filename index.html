@@ -440,7 +440,14 @@ var PRESET_DATA = {"owners": [{"id": "o1", "name": "こーすけ", "color": "#3e
     <div class="form-group" id="tickerGroup">
       <label class="form-label" id="tickerLabel">ティッカー / コード</label>
       <input class="form-input" id="assetTicker" placeholder="例: 7203.T" type="text">
-      <div style="font-size:10px;color:var(--text3);margin-top:4px;" id="tickerHint">日本株: 7203.T　米国株: AAPL　暗号資産: bitcoin (CoinGecko ID)</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px;" id="tickerHint">日本株: 7203.T　米国株: AAPL　暗号資産: CoinGecko ID（下の検索ボタンで自動入力）</div>
+      <div id="cryptoSearchArea" style="display:none;margin-top:6px;">
+        <button type="button" onclick="searchCryptoId()" 
+          style="width:100%;padding:8px;background:var(--accent2);color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">
+          🔍 銘柄名でCoinGecko IDを検索
+        </button>
+        <div id="cryptoCandidates" style="margin-top:6px;"></div>
+      </div>
     </div>
     <div class="form-row">
       <div class="form-group">
@@ -635,20 +642,43 @@ async function fetchYahoo(ticker) {
   } catch(e) { return null; }
 }
 
-// 投資信託の基準価額取得（Yahoo Finance JP経由）
-// 投信の price は「1万口あたりの基準価額（円）」
-// アプリ内では qty=口数、manualPrice=円/口 なので
-// Yahoo価格(円/万口) ÷ 10000 = 円/口 に変換が必要
+// 投資信託の基準価額取得
+// 方法1: Yahoo Finance JP (0331418A.T形式)
+// 方法2: stooq.com (0331418a.jp形式) ※バックアップ
 async function fetchTrustPrice(ticker) {
-  const data = await fetchYahoo(ticker);
-  if (!data) return null;
-  // 投信の基準価額は円/万口 → 円/口に変換
-  return {
-    price:     data.price / 10000,
-    prevClose: (data.prevClose || data.price) / 10000,
-    currency:  'JPY',
-    rawPrice:  data.price  // 表示用に円/万口も保持
-  };
+  // Yahoo Finance JPで試みる
+  try {
+    const r = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=2d`,
+      { headers: { 'Accept': 'application/json' } }
+    );
+    if (r.ok) {
+      const d = await r.json();
+      const meta = d?.chart?.result?.[0]?.meta;
+      if (meta && meta.regularMarketPrice > 0) {
+        const raw = meta.regularMarketPrice; // 円/万口
+        const prev = meta.chartPreviousClose || meta.previousClose || raw;
+        return { price: raw, prevClose: prev, currency: 'JPY' };
+      }
+    }
+  } catch(e) {}
+
+  // バックアップ: stooq.com
+  try {
+    const stooqTicker = ticker.replace('.T','').toLowerCase() + '.jp';
+    const r2 = await fetch(`https://stooq.com/q/l/?s=${stooqTicker}&f=sd2t2ohlcv&h&e=csv`);
+    if (r2.ok) {
+      const text = await r2.text();
+      const lines = text.trim().split('\n');
+      if (lines.length >= 2) {
+        const cols = lines[1].split(',');
+        const price = parseFloat(cols[4]); // Close
+        if (price > 0) return { price, prevClose: parseFloat(cols[3])||price, currency: 'JPY' };
+      }
+    }
+  } catch(e) {}
+
+  return null;
 }
 async function fetchCrypto(coinId) {
   try {
@@ -683,11 +713,13 @@ async function fetchAllPrices() {
         });
       }
     } else if (info.type === 'trust') {
-      // 投資信託: Yahoo Finance JPから円/万口で取得 → 円/口に変換
+      // 投資信託: 基準価額(円/万口)を取得
+      // アプリのqty=万口, price=円/万口 → 評価額 = qty × price
       result = await fetchTrustPrice(ticker);
       if (result) {
         info.assetIds.forEach(id => {
-          priceCache[id] = { price: result.price, prevClose: result.prevClose, ts: Date.now(), live: true, rawPrice: result.rawPrice };
+          // result.price は円/万口
+          priceCache[id] = { price: result.price, prevClose: result.prevClose, ts: Date.now(), live: true };
         });
       }
     } else {
@@ -929,7 +961,7 @@ function renderHoldings() {
         <div class="card-body">
           <div><div class="stat-label">評価額</div><div class="stat-value">${fmtJpy(val)}</div></div>
           <div><div class="stat-label">損益</div><div class="stat-value ${chipCls(gain)}">${gain>=0?'+':''}${fmtJpy(gain)}<br><span style="font-size:11px">${fmtPct(gainPct)}</span></div></div>
-          <div><div class="stat-label">${a.type==='trust'?'基準価額(円/万口)':'現在価格'}</div><div class="stat-value">${a.type==='trust'?(fmtJpy(p.rawPrice||p.price*10000)):type==='cash'?'—':fmtJpy(p.price)}</div></div>
+          <div><div class="stat-label">${a.type==='trust'?'基準価額(円/万口)':'現在価格'}</div><div class="stat-value">${a.type==='trust'?fmtJpy(p.price):type==='cash'?'—':fmtJpy(p.price)}</div></div>
           <div><div class="stat-label">前日比</div><div class="stat-value ${chipCls(dayChg)}">${dayChg>=0?'+':''}${fmtJpy(dayChg)}<br><span style="font-size:11px">${fmtPct(dayPct)}</span></div></div>
         </div>
         <div class="card-footer">
@@ -1113,9 +1145,10 @@ function onTypeChange() {
   document.getElementById('accumSection').style.display=isCash?'none':'';
   const hints={jp:'日本株: 7203.T / 9984.T (末尾に .T)',us:'米国株: AAPL / NVDA / MSFT',crypto:'暗号資産: bitcoin / ethereum / solana (CoinGecko ID)'};
   if(hints[type]) document.getElementById('tickerHint').textContent=hints[type];
-  document.getElementById('qtyLabel').textContent={jp:'保有株数',us:'保有株数',crypto:'保有数量（枚）',trust:'保有口数',cash:'金額（円）'}[type];
+  document.getElementById('qtyLabel').textContent={jp:'保有株数',us:'保有株数',crypto:'保有数量（枚）',trust:'保有万口数 (口数÷10000)',cash:'金額（円）'}[type];
   // レンディングセクションは暗号資産のみ表示
   document.getElementById('lendingSection').style.display = (type === 'crypto') ? '' : 'none';
+  document.getElementById('cryptoSearchArea').style.display = (type === 'crypto') ? '' : 'none';
 }
 
 function onAccumChange() {
@@ -1304,6 +1337,54 @@ function showToast(msg) {
 ['addModal','ownerModal'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){ if(e.target===this) closeModal(id); });
 });
+
+// ==================== CRYPTO SEARCH ====================
+async function searchCryptoId() {
+  const name = document.getElementById('assetName').value.trim();
+  if (!name) { showToast('先に銘柄名を入力してください'); return; }
+
+  const candEl = document.getElementById('cryptoCandidates');
+  candEl.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:6px 0;">検索中...</div>';
+
+  try {
+    // CoinGecko検索API（無料・CORS対応）
+    const r = await fetch(
+      `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(name)}`
+    );
+    if (!r.ok) throw new Error('API error');
+    const d = await r.json();
+    const coins = (d.coins || []).slice(0, 6);
+
+    if (coins.length === 0) {
+      candEl.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:6px 0;">見つかりませんでした。IDを直接入力してください。</div>';
+      return;
+    }
+
+    let html2 = '<div style="font-size:11px;color:var(--text3);margin-bottom:4px;">候補をタップして選択：</div>';
+    coins.forEach(c => {
+      html2 += `<div onclick="selectCryptoCandidate('${c.id}','${c.name.replace(/'/g,"\'")}','${c.symbol}')"
+        style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface2);
+               border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;">
+        ${c.thumb ? `<img src="${c.thumb}" style="width:20px;height:20px;border-radius:50%;">` : ''}
+        <div>
+          <div style="font-size:13px;font-weight:600;">${c.name} <span style="color:var(--text3);font-size:11px;">${c.symbol.toUpperCase()}</span></div>
+          <div style="font-size:10px;color:var(--accent);">ID: ${c.id}</div>
+        </div>
+      </div>`;
+    });
+    candEl.innerHTML = html2;
+  } catch(e) {
+    candEl.innerHTML = '<div style="font-size:12px;color:var(--danger);">検索エラー。IDを直接入力してください。</div>';
+  }
+}
+
+function selectCryptoCandidate(id, name, symbol) {
+  document.getElementById('assetTicker').value = id;
+  document.getElementById('assetName').value   = name;
+  document.getElementById('cryptoCandidates').innerHTML =
+    `<div style="font-size:12px;color:var(--accent);padding:4px 0;">✓ 選択: ${name} (${id})</div>`;
+  showToast(`${name} を選択しました`);
+}
 
 // ==================== EXISTING ASSET PICKER ====================
 function populateExistingAssets() {
