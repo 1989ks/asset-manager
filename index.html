@@ -689,9 +689,43 @@ async function fetchYahoo(ticker) {
 }
 
 // 投資信託の基準価額取得
-// stooq.com を主軸（CORS対応・無料）+ Yahoo Finance JP フォールバック
+// Claude API (web_search) → stooq → Yahoo Finance の順で試みる
 async function fetchTrustPrice(ticker, stooqCode) {
-  // ① stooq.com（最も確実・CORS対応）
+
+  // ① Claude API経由（web_searchで基準価額を取得）
+  const apiKey = getApiKey();
+  if (apiKey) {
+    try {
+      const fundName = assets.find(a => a.ticker === ticker)?.name
+        ?.replace(/\s*\(.*?\)/g, '').trim() || ticker;
+      const prompt = `「${fundName}」の本日の基準価額（円/万口）を数字のみで答えてください。例: 37637`;
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 100,
+          tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+      if (resp.ok) {
+        const d = await resp.json();
+        const text = d.content?.map(c => c.type === 'text' ? c.text : '').join('').trim();
+        const price = parseFloat(text.replace(/[^0-9.]/g, ''));
+        if (price > 100 && price < 1000000) {
+          return { price, prevClose: price, currency: 'JPY' };
+        }
+      }
+    } catch(e) {}
+  }
+
+  // ② stooq.com（CORSが通る場合）
   if (stooqCode) {
     try {
       const url = `https://stooq.com/q/l/?s=${stooqCode}&f=sd2t2ohlcv&h&e=csv`;
@@ -701,8 +735,8 @@ async function fetchTrustPrice(ticker, stooqCode) {
         const lines = text.trim().split('\n');
         if (lines.length >= 2) {
           const cols = lines[1].split(',');
-          const price = parseFloat(cols[4]); // Close
-          const prev  = parseFloat(cols[3]); // Open（前日終値近似）
+          const price = parseFloat(cols[4]);
+          const prev  = parseFloat(cols[3]);
           if (price > 0 && !isNaN(price)) {
             return { price, prevClose: prev || price, currency: 'JPY' };
           }
@@ -711,25 +745,19 @@ async function fetchTrustPrice(ticker, stooqCode) {
     } catch(e) {}
   }
 
-  // ② Yahoo Finance JP v7/quote（プロキシ経由）
+  // ③ Yahoo Finance（プロキシ経由）
   const yfUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(ticker)}`;
-  const proxies = [
+  for (const url of [
     `https://corsproxy.io/?${encodeURIComponent(yfUrl)}`,
     `https://api.allorigins.win/raw?url=${encodeURIComponent(yfUrl)}`,
-    yfUrl,
-  ];
-  for (const url of proxies) {
+  ]) {
     try {
       const r = await fetch(url, { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(8000) });
       if (!r.ok) continue;
       const d = await r.json();
       const q = d?.quoteResponse?.result?.[0];
       if (q && q.regularMarketPrice > 0) {
-        return {
-          price:     q.regularMarketPrice,
-          prevClose: q.regularMarketPreviousClose || q.regularMarketPrice,
-          currency:  'JPY'
-        };
+        return { price: q.regularMarketPrice, prevClose: q.regularMarketPreviousClose || q.regularMarketPrice, currency: 'JPY' };
       }
     } catch(e) { continue; }
   }
@@ -747,53 +775,110 @@ async function fetchCrypto(coinId) {
   } catch(e) { return null; }
 }
 async function fetchAllPrices() {
-  await fetchUsdJpy();
-  const tickerMap = {};
+  // ① GitHub Pages上のprices.jsonから取得（GitHub Actionsが毎日更新）
+  try {
+    // 同じリポジトリのprices.jsonを読み込む
+    const baseUrl = location.href.replace(/\/[^\/]*$/, '');
+    const r = await fetch(`${baseUrl}/prices.json?t=${Date.now()}`, {
+      signal: AbortSignal.timeout(10000)
+    });
+    if (r.ok) {
+      const data = await r.json();
+      usdJpy = data.usdJpy || usdJpy;
 
-  assets.forEach(a => {
-    if (!a.ticker || a.type === 'cash') return;
-    if (!tickerMap[a.ticker]) tickerMap[a.ticker] = { type: a.type, assetIds: [] };
-    tickerMap[a.ticker].assetIds.push(a.id);
-  });
+      // 投資信託の基準価額を反映
+      assets.forEach(a => {
+        if (a.type === 'trust' && a.ticker && data.trusts[a.ticker]) {
+          const p = data.trusts[a.ticker];
+          priceCache[a.id] = {
+            price:     p.price,
+            prevClose: p.prevClose || p.price,
+            ts:        Date.now(),
+            live:      true
+          };
+        }
+      });
 
-  await Promise.allSettled(Object.entries(tickerMap).map(async ([ticker, info]) => {
-    let result = null;
+      // 米国株の価格を反映
+      assets.forEach(a => {
+        if (a.type === 'us' && a.ticker && data.stocks[a.ticker]) {
+          const p = data.stocks[a.ticker];
+          priceCache[a.id] = {
+            price:     p.price,
+            prevClose: p.prevClose || p.price,
+            ts:        Date.now(),
+            live:      true
+          };
+        }
+      });
 
-    if (info.type === 'crypto') {
-      result = await fetchCrypto(ticker);
-      if (result) {
-        // crypto: JPY建て、そのまま使用
-        info.assetIds.forEach(id => {
-          priceCache[id] = { price: result.price, prevClose: result.prevClose, ts: Date.now(), live: true };
-        });
-      }
-    } else if (info.type === 'trust') {
-      // 投資信託: 基準価額(円/万口)を取得
-      // アプリのqty=万口, price=円/万口 → 評価額 = qty × price
-      // stooqCodeは最初のassetから取得（同ticker内で共通）
-      const stooqCode = assets.find(a => info.assetIds.includes(a.id))?.stooqCode || null;
-      result = await fetchTrustPrice(ticker, stooqCode);
-      if (result) {
-        info.assetIds.forEach(id => {
-          priceCache[id] = { price: result.price, prevClose: result.prevClose, ts: Date.now(), live: true };
-        });
-      }
-    } else {
-      // 株式: USD建ての場合JPY変換
-      result = await fetchYahoo(ticker);
-      if (result) {
-        let price = result.price, prev = result.prevClose || result.price;
-        if (result.currency === 'USD') { price *= usdJpy; prev *= usdJpy; }
-        info.assetIds.forEach(id => {
-          priceCache[id] = { price, prevClose: prev, ts: Date.now(), live: true };
-        });
-      }
+      console.log(`prices.json 読み込み成功: 投信${Object.keys(data.trusts).length}件, 株${Object.keys(data.stocks).length}件`);
     }
-  }));
+  } catch(e) {
+    console.log('prices.json 読み込み失敗、直接取得を試みます');
+    // ② フォールバック: 直接APIアクセス
+    await fetchAllPricesDirect();
+    return;
+  }
+
+  // 暗号資産はCoinGeckoから直接取得（CORS対応）
+  await fetchCryptoPrices();
 
   // レンディング利息の自動計算
   processLendingInterest();
   save();
+}
+
+// 直接API取得（prices.json が使えない場合のフォールバック）
+async function fetchAllPricesDirect() {
+  await fetchUsdJpy();
+  const tickerMap = {};
+  assets.forEach(a => {
+    if (!a.ticker || a.type === 'cash' || a.type === 'crypto') return;
+    if (!tickerMap[a.ticker]) tickerMap[a.ticker] = { type: a.type, assetIds: [] };
+    tickerMap[a.ticker].assetIds.push(a.id);
+  });
+  await Promise.allSettled(Object.entries(tickerMap).map(async ([ticker, info]) => {
+    let result = null;
+    if (info.type === 'trust') {
+      const stooqCode = assets.find(a => info.assetIds.includes(a.id))?.stooqCode || null;
+      result = await fetchTrustPrice(ticker, stooqCode);
+    } else {
+      result = await fetchYahoo(ticker);
+    }
+    if (result) {
+      let price = result.price, prev = result.prevClose || result.price;
+      if (result.currency === 'USD') { price *= usdJpy; prev *= usdJpy; }
+      info.assetIds.forEach(id => {
+        priceCache[id] = { price, prevClose: prev, ts: Date.now(), live: true };
+      });
+    }
+  }));
+  await fetchCryptoPrices();
+  processLendingInterest();
+  save();
+}
+
+// 暗号資産の価格取得（CoinGeckoはCORS対応）
+async function fetchCryptoPrices() {
+  const cryptoAssets = assets.filter(a => a.type === 'crypto' && a.ticker);
+  if (cryptoAssets.length === 0) return;
+
+  // ticker重複排除
+  const tickerMap = {};
+  cryptoAssets.forEach(a => {
+    if (!tickerMap[a.ticker]) tickerMap[a.ticker] = [];
+    tickerMap[a.ticker].push(a.id);
+  });
+
+  await Promise.allSettled(Object.entries(tickerMap).map(async ([ticker, ids]) => {
+    const result = await fetchCrypto(ticker);
+    if (result) {
+      ids.forEach(id => {
+        priceCache[id] = { price: result.price, prevClose: result.prevClose, ts: Date.now(), live: true };
+      });
+    }
+  }));
 }
 
 // レンディング利息自動計算

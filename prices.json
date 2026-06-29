@@ -1,0 +1,164 @@
+{
+  "updatedAt": "2025-06-25 14:07",
+  "usdJpy": 155.0,
+  "trusts": {
+    "0331418A.T": {
+      "price": 37637,
+      "prevClose": 37637,
+      "name": "eMAXIS Slim 全世界株式(オルカン)"
+    },
+    "03311187.T": {
+      "price": 43753,
+      "prevClose": 43753,
+      "name": "eMAXIS Slim 米国株式(S&P500)"
+    },
+    "04311137.T": {
+      "price": 91226,
+      "prevClose": 91226,
+      "name": "iFreeNEXT FANG+インデックス"
+    },
+    "9I312179.T": {
+      "price": 12956,
+      "prevClose": 12956,
+      "name": "楽天・SCHD"
+    },
+    "2931113C.T": {
+      "price": 28290,
+      "prevClose": 28290,
+      "name": "ニッセイNASDAQ100"
+    },
+    "0331119A.T": {
+      "price": 28182,
+      "prevClose": 28182,
+      "name": "eMAXIS Slim 新興国株式"
+    },
+    "0331117A.T": {
+      "price": 37960,
+      "prevClose": 37960,
+      "name": "eMAXIS Slim 全世界株式(除く日本)"
+    },
+    "9I31116A.T": {
+      "price": 44305,
+      "prevClose": 44305,
+      "name": "楽天・全米株式(VTI)"
+    }
+  },
+  "stocks": {
+    "CRWD": {
+      "price": 107653,
+      "prevClose": 107653
+    },
+    "AAPL": {
+      "price": 46645,
+      "prevClose": 46645
+    },
+    "KO": {
+      "price": 12801,
+      "prevClose": 12801
+    },
+    "PYPL": {
+      "price": 2235,
+      "prevClose": 2235
+    },
+    "TSLA": {
+      "price": 60068,
+      "prevClose": 60068
+    },
+    "XOM": {
+      "price": 21840,
+      "prevClose": 21840
+    },
+    "MMM": {
+      "price": 26683,
+      "prevClose": 26683
+    },
+    "MO": {
+      "price": 11520,
+      "prevClose": 11520
+    },
+    "MSFT": {
+      "price": 58575,
+      "prevClose": 58575
+    },
+    "SQ": {
+      "price": 12238,
+      "prevClose": 12238
+    },
+    "JPM": {
+      "price": 53712,
+      "prevClose": 53712
+    },
+    "DHR": {
+      "price": 30211,
+      "prevClose": 30211
+    },
+    "OKTA": {
+      "price": 18967,
+      "prevClose": 18967
+    },
+    "COST": {
+      "price": 153426,
+      "prevClose": 153426
+    },
+    "WMT": {
+      "price": 18749,
+      "prevClose": 18749
+    },
+    "NVDA": {
+      "price": 32149,
+      "prevClose": 32149
+    },
+    "UNH": {
+      "price": 64779,
+      "prevClose": 64779
+    },
+    "CVX": {
+      "price": 27366,
+      "prevClose": 27366
+    },
+    "TGT": {
+      "price": 22541,
+      "prevClose": 22541
+    },
+    "DIS": {
+      "price": 16158,
+      "prevClose": 16158
+    },
+    "PEP": {
+      "price": 22726,
+      "prevClose": 22726
+    },
+    "BFLY": {
+      "price": 263943,
+      "prevClose": 263943
+    },
+    "QS": {
+      "price": 51827,
+      "prevClose": 51827
+    },
+    "JOBY": {
+      "price": 25519,
+      "prevClose": 25519
+    },
+    "SBSW": {
+      "price": 13895,
+      "prevClose": 13895
+    },
+    "ALT": {
+      "price": 11929,
+      "prevClose": 11929
+    },
+    "RXRX": {
+      "price": 11494,
+      "prevClose": 11494
+    },
+    "MP": {
+      "price": 9141,
+      "prevClose": 9141
+    },
+    "CHPT": {
+      "price": 2707,
+      "prevClose": 2707
+    }
+  }
+}
