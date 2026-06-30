@@ -2,6 +2,9 @@
 """
 毎日の価格取得スクリプト
 GitHub Actionsから実行され、prices.jsonを更新する
+
+投資信託: 投資信託協会の公式API（ISINコード）
+米国株:   Yahoo Finance v8/chart API
 """
 
 import json
@@ -9,42 +12,19 @@ import time
 import datetime
 import urllib.request
 import urllib.error
+import re
 
 # ===== 投資信託 ISINコード対応表 =====
-TRUST_FUNDS = {
-    "0331418A.T": {
-        "name": "eMAXIS Slim 全世界株式(オルカン)",
-        "isin": "JP90C000GJB9"
-    },
-    "03311187.T": {
-        "name": "eMAXIS Slim 米国株式(S&P500)",
-        "isin": "JP90C000HJF5"
-    },
-    "04311137.T": {
-        "name": "iFreeNEXT FANG+インデックス",
-        "isin": "JP90C000GHV0"
-    },
-    "9I312179.T": {
-        "name": "楽天・SCHD",
-        "isin": "JP90C000P8S3"
-    },
-    "2931113C.T": {
-        "name": "ニッセイNASDAQ100インデックスファンド",
-        "isin": "JP90C000NJF9"
-    },
-    "0331119A.T": {
-        "name": "eMAXIS Slim 新興国株式インデックス",
-        "isin": "JP90C000GGH2"
-    },
-    "0331117A.T": {
-        "name": "eMAXIS Slim 全世界株式(除く日本)",
-        "isin": "JP90C000GGG4"
-    },
-    "9I31116A.T": {
-        "name": "楽天・全米株式インデックス・ファンド(楽天VTI)",
-        "isin": "JP90C000FGP5"
-    },
-}
+TRUST_FUNDS = [
+    {"ticker": "0331418A.T", "isin": "JP90C000GJB9", "name": "eMAXIS Slim 全世界株式(オルカン)"},
+    {"ticker": "03311187.T", "isin": "JP90C000HJF5", "name": "eMAXIS Slim 米国株式(S&P500)"},
+    {"ticker": "04311137.T", "isin": "JP90C000GHV0", "name": "iFreeNEXT FANG+インデックス"},
+    {"ticker": "9I312179.T", "isin": "JP90C000P8S3", "name": "楽天・SCHD"},
+    {"ticker": "2931113C.T", "isin": "JP90C000NJF9", "name": "ニッセイNASDAQ100インデックスファンド"},
+    {"ticker": "0331119A.T", "isin": "JP90C000GGH2", "name": "eMAXIS Slim 新興国株式インデックス"},
+    {"ticker": "0331117A.T", "isin": "JP90C000GGG4", "name": "eMAXIS Slim 全世界株式(除く日本)"},
+    {"ticker": "9I31116A.T", "isin": "JP90C000FGP5", "name": "楽天・全米株式インデックス・ファンド(楽天VTI)"},
+]
 
 US_STOCKS = [
     "CRWD", "AAPL", "PYPL", "TSLA", "XOM", "MMM", "MO", "MSFT",
@@ -57,122 +37,170 @@ US_STOCKS = [
 def fetch_url(url, timeout=15):
     try:
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'application/json,text/plain,*/*',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'application/json, text/html, */*',
         }
         req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return resp.read().decode('utf-8', errors='replace')
+            raw = resp.read()
+            # UTF-8で試み、失敗したらShift-JIS
+            for enc in ['utf-8', 'shift-jis', 'euc-jp']:
+                try:
+                    return raw.decode(enc)
+                except Exception:
+                    continue
+            return raw.decode('utf-8', errors='replace')
     except urllib.error.HTTPError as e:
         print(f"    HTTPエラー {e.code}: {url[:80]}")
         return None
     except urllib.error.URLError as e:
-        print(f"    URLエラー: {e.reason} ({url[:80]})")
+        print(f"    URLエラー: {e.reason}")
         return None
     except Exception as e:
-        print(f"    予期しないエラー: {type(e).__name__}: {e} ({url[:80]})")
+        print(f"    エラー: {type(e).__name__}: {e}")
         return None
 
 
 def fetch_usd_jpy():
-    text = fetch_url("https://api.frankfurter.app/latest?from=USD&to=JPY")
-    if text:
-        try:
-            d = json.loads(text)
-            rate = d.get("rates", {}).get("JPY")
-            if rate:
-                print(f"  USD/JPY = {rate}")
-                return rate
-        except Exception as e:
-            print(f"  パースエラー: {e}")
-    text2 = fetch_url("https://open.er-api.com/v6/latest/USD")
-    if text2:
-        try:
-            d2 = json.loads(text2)
-            rate2 = d2.get("rates", {}).get("JPY")
-            if rate2:
-                print(f"  USD/JPY = {rate2} (backup)")
-                return rate2
-        except Exception:
-            pass
+    for url in [
+        "https://api.frankfurter.app/latest?from=USD&to=JPY",
+        "https://open.er-api.com/v6/latest/USD",
+    ]:
+        text = fetch_url(url)
+        if text:
+            try:
+                d = json.loads(text)
+                rate = d.get("rates", {}).get("JPY")
+                if rate:
+                    print(f"  USD/JPY = {rate}")
+                    return float(rate)
+            except Exception:
+                pass
     print("  USD/JPY取得失敗、155を使用")
     return 155.0
 
 
-def fetch_trust_price(ticker, isin, name):
-    print(f"  [{ticker}] {name[:30]} を取得中...")
+def fetch_trust_by_isin(isin, name):
+    """
+    投資信託協会の公式APIで基準価額を取得
+    URL: https://toushin-lib.fwg.ne.jp/FdsWeb/FDST030000?isinCd=ISIN
+    レスポンス例: [{"basicPrice":"37637","previousPrice":"37638",...}]
+    """
+    url = f"https://toushin-lib.fwg.ne.jp/FdsWeb/FDST030000?isinCd={isin}"
+    print(f"    投信協会API: {url}")
+    text = fetch_url(url)
+    if not text:
+        return None, None
 
-    # ① Yahoo Finance v8/chart
-    url1 = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=5d"
-    text1 = fetch_url(url1)
-    if text1:
-        try:
-            d1 = json.loads(text1)
-            chart_result = d1.get("chart", {}).get("result")
-            if chart_result:
-                meta = chart_result[0].get("meta", {})
-                price = meta.get("regularMarketPrice")
-                prev = meta.get("chartPreviousClose") or meta.get("previousClose")
-                if price and price > 0:
-                    print(f"    OK Yahoo v8: {price}円/万口")
-                    return float(price), float(prev or price)
-                else:
-                    print(f"    Yahoo v8: price データなし")
-            else:
-                error_info = d1.get("chart", {}).get("error")
-                print(f"    Yahoo v8: resultなし (error: {error_info})")
-        except Exception as e:
-            print(f"    Yahoo v8 パースエラー: {e}")
-    else:
-        print(f"    Yahoo v8: 接続失敗")
+    print(f"    レスポンス(先頭200): {text[:200]}")
 
-    time.sleep(0.5)
-
-    # ② Yahoo Finance v7/quote
-    url2 = f"https://query2.finance.yahoo.com/v7/finance/quote?symbols={ticker}"
-    text2 = fetch_url(url2)
-    if text2:
-        try:
-            d2 = json.loads(text2)
-            result = d2.get("quoteResponse", {}).get("result", [])
-            if result:
-                price2 = result[0].get("regularMarketPrice")
-                prev2 = result[0].get("regularMarketPreviousClose")
-                if price2 and price2 > 0:
-                    print(f"    OK Yahoo v7: {price2}円/万口")
-                    return float(price2), float(prev2 or price2)
-            else:
-                err = d2.get("quoteResponse", {}).get("error")
-                print(f"    Yahoo v7: resultなし (error: {err})")
-        except Exception as e:
-            print(f"    Yahoo v7 パースエラー: {e}")
-    else:
-        print(f"    Yahoo v7: 接続失敗")
-
-    time.sleep(0.5)
-
-    # ③ stooq.com
     try:
-        stooq_code = ticker.replace('.T', '').lower() + '.jp'
-        url3 = f"https://stooq.com/q/l/?s={stooq_code}&f=sd2t2ohlcv&h&e=csv"
-        text3 = fetch_url(url3)
-        if text3:
-            lines = text3.strip().split('\n')
-            print(f"    stooq応答: {lines[0][:60] if lines else '空'}")
-            if len(lines) >= 2:
-                cols = lines[1].split(',')
-                if len(cols) >= 5:
-                    price3 = cols[4]
-                    if price3 and price3 != 'N/D':
-                        price3 = float(price3)
-                        prev3 = float(cols[3]) if cols[3] != 'N/D' else price3
-                        if price3 > 0:
-                            print(f"    OK stooq: {price3}円/万口")
-                            return price3, prev3
-                    else:
-                        print(f"    stooq: データなし (N/D)")
+        d = json.loads(text)
+        # リスト形式
+        if isinstance(d, list) and len(d) > 0:
+            item = d[0]
+            # basicPrice, standardPrice, price など複数のキーを試みる
+            for key in ["basicPrice", "standardPrice", "price", "nav"]:
+                val = item.get(key)
+                if val is not None:
+                    try:
+                        price = float(str(val).replace(",", ""))
+                        if price > 0:
+                            # 前日価格
+                            prev = None
+                            for pkey in ["previousPrice", "prevPrice", "previousNav"]:
+                                pval = item.get(pkey)
+                                if pval is not None:
+                                    try:
+                                        prev = float(str(pval).replace(",", ""))
+                                        break
+                                    except Exception:
+                                        pass
+                            print(f"    OK 投信協会 key={key}: {price}円/万口")
+                            return price, prev or price
+                    except Exception:
+                        pass
+        # 辞書形式
+        elif isinstance(d, dict):
+            for key in ["basicPrice", "standardPrice", "price", "nav"]:
+                val = d.get(key)
+                if val is not None:
+                    try:
+                        price = float(str(val).replace(",", ""))
+                        if price > 0:
+                            print(f"    OK 投信協会 key={key}: {price}円/万口")
+                            return price, price
+                    except Exception:
+                        pass
+
+        print(f"    投信協会: 価格キーが見つからない。キー一覧: {list(d[0].keys()) if isinstance(d, list) and d else list(d.keys()) if isinstance(d, dict) else 'unknown'}")
+    except json.JSONDecodeError:
+        # JSON以外（HTMLなど）の場合、数値をスクレイピング
+        print(f"    JSONでない、テキストから数値抽出を試みる")
+        # 基準価額: 数字パターンを探す（例：37,637）
+        matches = re.findall(r'基準価額[^\d]*?([\d,]+)', text)
+        if matches:
+            try:
+                price = float(matches[0].replace(",", ""))
+                if price > 0:
+                    print(f"    OK スクレイピング: {price}円/万口")
+                    return price, price
+            except Exception:
+                pass
+        print(f"    スクレイピング失敗")
     except Exception as e:
-        print(f"    stooq エラー: {e}")
+        print(f"    パースエラー: {e}")
+
+    return None, None
+
+
+def fetch_trust_by_morningstar(isin, name):
+    """
+    Morningstar経由で基準価額取得（バックアップ）
+    """
+    url = f"https://www.morningstar.co.jp/FundData/SnapShot.do?isinCode={isin}"
+    print(f"    Morningstar: {url}")
+    text = fetch_url(url)
+    if not text:
+        return None, None
+
+    # HTMLから基準価額を抽出
+    patterns = [
+        r'基準価額[^\d]*([\d,]+)円',
+        r'"nav"\s*:\s*([\d.]+)',
+        r'<td[^>]*>([\d,]+)</td>.*?基準価額',
+    ]
+    for pattern in patterns:
+        matches = re.findall(pattern, text)
+        if matches:
+            try:
+                price = float(matches[0].replace(",", ""))
+                if 100 < price < 1000000:
+                    print(f"    OK Morningstar: {price}円/万口")
+                    return price, price
+            except Exception:
+                pass
+    print(f"    Morningstar: 価格抽出失敗")
+    return None, None
+
+
+def fetch_trust_price(fund):
+    ticker = fund["ticker"]
+    isin   = fund["isin"]
+    name   = fund["name"]
+    print(f"  [{ticker}] {name[:30]}")
+
+    # ① 投資信託協会 公式API
+    price, prev = fetch_trust_by_isin(isin, name)
+    if price:
+        return price, prev
+
+    time.sleep(0.5)
+
+    # ② Morningstar
+    price, prev = fetch_trust_by_morningstar(isin, name)
+    if price:
+        return price, prev
 
     print(f"    NG 全API失敗")
     return None, None
@@ -184,23 +212,22 @@ def fetch_stock_price(ticker, usd_jpy):
     if text:
         try:
             d = json.loads(text)
-            chart_result = d.get("chart", {}).get("result")
-            if chart_result:
-                meta = chart_result[0].get("meta", {})
+            result = d.get("chart", {}).get("result")
+            if result:
+                meta = result[0].get("meta", {})
                 price = meta.get("regularMarketPrice")
-                prev = meta.get("chartPreviousClose") or price
+                prev  = meta.get("chartPreviousClose") or price
                 currency = meta.get("currency", "USD")
                 if price and price > 0:
                     price = float(price)
-                    prev = float(prev)
+                    prev  = float(prev)
                     if currency == "USD":
                         price *= usd_jpy
-                        prev *= usd_jpy
+                        prev  *= usd_jpy
                     print(f"  {ticker}: {price:.2f}円")
                     return {"price": round(price, 2), "prevClose": round(prev, 2)}
         except Exception as e:
             print(f"  {ticker}: パースエラー {e}")
-
     print(f"  {ticker}: 取得失敗")
     return None
 
@@ -211,9 +238,9 @@ def main():
 
     prices = {
         "updatedAt": today,
-        "usdJpy": 155.0,
-        "trusts": {},
-        "stocks": {},
+        "usdJpy":    155.0,
+        "trusts":    {},
+        "stocks":    {},
     }
 
     print("【USD/JPY】")
@@ -221,15 +248,17 @@ def main():
     time.sleep(1)
 
     print("\n【投資信託 基準価額】")
-    for ticker, info in TRUST_FUNDS.items():
-        price, prev = fetch_trust_price(ticker, info["isin"], info["name"])
+    for fund in TRUST_FUNDS:
+        price, prev = fetch_trust_price(fund)
         if price:
-            prices["trusts"][ticker] = {
-                "price": round(price, 2),
+            prices["trusts"][fund["ticker"]] = {
+                "price":     round(price, 2),
                 "prevClose": round(prev, 2),
-                "name": info["name"]
+                "name":      fund["name"],
             }
         time.sleep(1)
+
+    print(f"\n投信取得結果: {len(prices['trusts'])}/{len(TRUST_FUNDS)}件成功")
 
     print("\n【米国株】")
     for ticker in US_STOCKS:
@@ -242,8 +271,6 @@ def main():
         json.dump(prices, f, ensure_ascii=False, indent=2)
 
     print(f"\n=== 完了: trusts={len(prices['trusts'])}件, stocks={len(prices['stocks'])}件 ===")
-    if len(prices['trusts']) == 0:
-        print("WARNING: 投資信託が1件も取得できませんでした")
     print("prices.json を更新しました")
 
 
