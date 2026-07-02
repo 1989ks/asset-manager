@@ -1,119 +1,115 @@
 {
-  "updatedAt": "2026-07-01 12:07",
-  "usdJpy": 162.44,
+  "updatedAt": "2026-07-02 11:33",
+  "usdJpy": 162.71,
   "trusts": {},
   "stocks": {
     "CRWD": {
-      "price": 123964.46,
-      "prevClose": 113885.06
+      "price": 125732.53,
+      "prevClose": 30219.64
     },
     "AAPL": {
-      "price": 47003.64,
-      "prevClose": 46097.22
-    },
-    "PYPL": {
-      "price": 7014.16,
-      "prevClose": 7194.47
+      "price": 47898.57,
+      "prevClose": 45841.92
     },
     "TSLA": {
-      "price": 68322.26,
-      "prevClose": 61680.09
+      "price": 69200.56,
+      "prevClose": 67010.49
     },
     "XOM": {
-      "price": 22208.8,
-      "prevClose": 22179.56
+      "price": 22174.12,
+      "prevClose": 22138.32
     },
     "MMM": {
-      "price": 26300.66,
-      "prevClose": 26641.78
+      "price": 26027.09,
+      "prevClose": 26428.99
     },
     "MO": {
-      "price": 11687.56,
-      "prevClose": 11986.45
+      "price": 11640.27,
+      "prevClose": 12048.68
     },
     "MSFT": {
-      "price": 60593.37,
-      "prevClose": 60585.25
+      "price": 62526.2,
+      "prevClose": 59970.02
     },
     "JPM": {
-      "price": 53171.49,
-      "prevClose": 53450.88
+      "price": 54356.53,
+      "prevClose": 53595.05
     },
     "DHR": {
-      "price": 30941.57,
-      "prevClose": 31869.1
+      "price": 31520.18,
+      "prevClose": 31367.23
     },
     "OKTA": {
-      "price": 22164.94,
-      "prevClose": 20188.04
+      "price": 22854.25,
+      "prevClose": 21365.45
     },
     "COST": {
-      "price": 151957.75,
-      "prevClose": 154730.6
+      "price": 150453.06,
+      "prevClose": 154034.3
     },
     "WMT": {
-      "price": 18397.95,
-      "prevClose": 18792.68
+      "price": 17706.1,
+      "prevClose": 18646.57
     },
     "NVDA": {
-      "price": 32502.62,
-      "prevClose": 31274.57
+      "price": 32148.24,
+      "prevClose": 31723.57
     },
     "UNH": {
-      "price": 67514.94,
-      "prevClose": 69506.45
+      "price": 69402.32,
+      "prevClose": 68308.91
     },
     "CVX": {
-      "price": 26926.05,
-      "prevClose": 27786.99
+      "price": 26959.42,
+      "prevClose": 27411.75
     },
     "TGT": {
-      "price": 21216.29,
-      "prevClose": 22804.95
+      "price": 21199.49,
+      "prevClose": 21790.12
     },
     "DIS": {
-      "price": 15634.85,
-      "prevClose": 16047.45
+      "price": 15572.97,
+      "prevClose": 16048.09
     },
     "PEP": {
-      "price": 21994.38,
-      "prevClose": 22967.39
+      "price": 22968.14,
+      "prevClose": 22564.62
     },
     "KO": {
-      "price": 13201.5,
-      "prevClose": 13422.42
+      "price": 13226.7,
+      "prevClose": 13447.98
     },
     "BFLY": {
-      "price": 1367.74,
-      "prevClose": 1444.09
+      "price": 1290.29,
+      "prevClose": 1449.75
     },
     "QS": {
-      "price": 1228.05,
-      "prevClose": 1163.07
+      "price": 1238.22,
+      "prevClose": 1234.97
     },
     "JOBY": {
-      "price": 1448.96,
-      "prevClose": 1434.35
+      "price": 1438.36,
+      "prevClose": 1404.19
     },
     "SBSW": {
-      "price": 1379.12,
-      "prevClose": 1440.84
+      "price": 1384.66,
+      "prevClose": 1402.56
     },
     "ALT": {
-      "price": 493.82,
-      "prevClose": 458.08
+      "price": 512.54,
+      "prevClose": 478.37
     },
     "RXRX": {
-      "price": 596.15,
-      "prevClose": 571.79
+      "price": 597.15,
+      "prevClose": 600.4
     },
     "MP": {
-      "price": 9098.26,
-      "prevClose": 8755.52
+      "price": 8831.9,
+      "prevClose": 8906.75
     },
     "CHPT": {
-      "price": 960.02,
-      "prevClose": 904.79
+      "price": 969.75,
+      "prevClose": 992.53
     }
   }
 }
