@@ -246,48 +246,67 @@ var PRESET_DATA = {"owners": [{"id": "o1", "name": "こーすけ", "color": "#3e
   <div id="fireSection" style="margin-bottom:16px;display:none">
   <div class="section-title">FIRE達成率</div>
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;">
+
     <!-- 達成率バー -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-      <span style="font-size:13px;font-weight:600;" id="fireRateLabel">—%</span>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <span style="font-size:20px;font-weight:800;color:var(--accent);" id="fireRateLabel">—%</span>
       <span style="font-size:11px;color:var(--text3);" id="fireGoalLabel">目標: 月—円</span>
     </div>
-    <div style="height:10px;background:var(--border);border-radius:5px;overflow:hidden;margin-bottom:12px;">
-      <div id="fireBar" style="height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:5px;transition:width .5s ease;width:0%"></div>
+    <div style="height:10px;background:var(--border);border-radius:5px;overflow:hidden;margin-bottom:14px;">
+      <div id="fireBar" style="height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:5px;transition:width .6s ease;width:0%"></div>
     </div>
-    <!-- 詳細 -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-      <div>
-        <div style="font-size:10px;color:var(--text3);">現在の取崩し可能額</div>
-        <div style="font-size:14px;font-weight:700;color:var(--accent);" id="fireCurrentIncome">¥—</div>
+
+    <!-- 数値 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+      <div style="background:var(--surface2);border-radius:8px;padding:10px;">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:3px;">月間取崩し可能額</div>
+        <div style="font-size:15px;font-weight:700;color:var(--accent);" id="fireCurrentIncome">¥—</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px;">※元本維持（永続）</div>
       </div>
-      <div>
-        <div style="font-size:10px;color:var(--text3);">不足額</div>
-        <div style="font-size:14px;font-weight:700;color:var(--down);" id="fireGap">¥—</div>
+      <div style="background:var(--surface2);border-radius:8px;padding:10px;">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:3px;" id="fireGapLabel">目標との差額</div>
+        <div style="font-size:15px;font-weight:700;" id="fireGap">¥—</div>
       </div>
-      <div>
-        <div style="font-size:10px;color:var(--text3);">FIRE達成必要資産</div>
+      <div style="background:var(--surface2);border-radius:8px;padding:10px;">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:3px;">FIRE達成に必要な資産</div>
         <div style="font-size:13px;font-weight:600;" id="fireRequired">¥—</div>
       </div>
-      <div>
-        <div style="font-size:10px;color:var(--text3);">現在の総資産</div>
+      <div style="background:var(--surface2);border-radius:8px;padding:10px;">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:3px;">現在の総資産（全員）</div>
         <div style="font-size:13px;font-weight:600;" id="fireCurrent">¥—</div>
       </div>
     </div>
+
+    <!-- 取崩しモード切替 -->
+    <div style="margin-bottom:12px;">
+      <div style="font-size:10px;color:var(--text3);margin-bottom:5px;">取崩しモード</div>
+      <div style="display:flex;gap:6px;">
+        <button id="modeBtn1" onclick="setFireMode('forever')"
+          style="flex:1;padding:7px 4px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid var(--accent);background:var(--accent);color:#0f1923;">
+          永続取崩し
+        </button>
+        <button id="modeBtn2" onclick="setFireMode('period')"
+          style="flex:1;padding:7px 4px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid var(--border);background:none;color:var(--text2);">
+          期間指定
+        </button>
+      </div>
+    </div>
+
     <!-- 設定 -->
-    <div style="border-top:1px solid var(--border);padding-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-      <div style="flex:1;min-width:120px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+      <div>
         <div style="font-size:10px;color:var(--text3);margin-bottom:3px;">月間目標支出</div>
         <div style="display:flex;align-items:center;gap:4px;">
           <input id="fireMonthlyExp" type="number" value="300000"
-            style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:5px 8px;width:100%;"
-            onchange="calcFire()">
-          <span style="font-size:11px;color:var(--text3);">円/月</span>
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:5px 8px;width:100%;outline:none;"
+            oninput="calcFire()">
+          <span style="font-size:10px;color:var(--text3);white-space:nowrap;">円/月</span>
         </div>
       </div>
-      <div style="flex:1;min-width:100px;">
+      <div>
         <div style="font-size:10px;color:var(--text3);margin-bottom:3px;">想定年利</div>
         <select id="fireGrowthRate" onchange="calcFire()"
-          style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:5px 8px;width:100%;-webkit-appearance:none;">
+          style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:5px 8px;width:100%;-webkit-appearance:none;outline:none;">
           <option value="3">3%（保守的）</option>
           <option value="4">4%</option>
           <option value="5" selected>5%（標準）</option>
@@ -295,6 +314,21 @@ var PRESET_DATA = {"owners": [{"id": "o1", "name": "こーすけ", "color": "#3e
           <option value="7">7%（積極的）</option>
         </select>
       </div>
+    </div>
+
+    <!-- 期間モード用 -->
+    <div id="firePeriodRow" style="display:none;margin-bottom:6px;">
+      <div style="font-size:10px;color:var(--text3);margin-bottom:3px;">取崩し期間</div>
+      <div style="display:flex;align-items:center;gap:4px;">
+        <input id="firePeriodYears" type="number" value="30"
+          style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;padding:5px 8px;width:80px;outline:none;"
+          oninput="calcFire()">
+        <span style="font-size:12px;color:var(--text3);">年間取崩し可能額: <strong id="firePeriodIncome" style="color:var(--accent);">¥—/月</strong></span>
+      </div>
+    </div>
+
+    <div style="font-size:10px;color:var(--text3);line-height:1.5;" id="fireFormula">
+      計算式: 総資産 × 年利 ÷ 12 = 月間取崩し可能額（元本維持）
     </div>
   </div>
 </div>
@@ -1054,8 +1088,28 @@ function filteredAssets(){ return activeOwner==='all' ? assets : assets.filter(a
 
 // ==================== RENDER ====================
 // ==================== FIRE CALCULATOR ====================
+let fireMode = 'forever'; // 'forever' or 'period'
+
+function setFireMode(mode) {
+  fireMode = mode;
+  const btn1 = document.getElementById('modeBtn1');
+  const btn2 = document.getElementById('modeBtn2');
+  const periodRow = document.getElementById('firePeriodRow');
+  if (mode === 'forever') {
+    btn1.style.background = 'var(--accent)'; btn1.style.color = '#0f1923'; btn1.style.borderColor = 'var(--accent)';
+    btn2.style.background = 'none'; btn2.style.color = 'var(--text2)'; btn2.style.borderColor = 'var(--border)';
+    if(periodRow) periodRow.style.display = 'none';
+    document.getElementById('fireFormula').textContent = '計算式: 総資産 × 年利 ÷ 12 = 月間取崩し可能額（元本維持・永続）';
+  } else {
+    btn2.style.background = 'var(--accent)'; btn2.style.color = '#0f1923'; btn2.style.borderColor = 'var(--accent)';
+    btn1.style.background = 'none'; btn1.style.color = 'var(--text2)'; btn1.style.borderColor = 'var(--border)';
+    if(periodRow) periodRow.style.display = '';
+    document.getElementById('fireFormula').textContent = '計算式: PMT関数で元本も取崩す場合の月額を計算';
+  }
+  calcFire();
+}
+
 function calcFire() {
-  // 全員の総資産を計算
   let totalAssets = 0;
   assets.forEach(a => {
     const p = getPrice(a);
@@ -1064,35 +1118,50 @@ function calcFire() {
 
   const monthlyExp  = parseFloat(document.getElementById('fireMonthlyExp')?.value) || 300000;
   const growthRate  = parseFloat(document.getElementById('fireGrowthRate')?.value) || 5;
-  const annualExp   = monthlyExp * 12;
+  const annualRate  = growthRate / 100;
+  const monthlyRate = annualRate / 12;
 
-  // 4%ルール的な計算：必要資産 = 年間支出 ÷ 取崩し率
-  // 取崩し率 = 想定年利（資産が減らない水準）
-  const withdrawalRate = growthRate / 100;
-  const requiredAssets = annualExp / withdrawalRate;
+  // ① 永続取崩し（元本維持）: 総資産 × 年利 ÷ 12
+  const foreverMonthly = totalAssets * monthlyRate;
 
-  // 現在の資産で毎月取崩せる金額
-  const currentMonthlyIncome = (totalAssets * withdrawalRate) / 12;
-  const gap = monthlyExp - currentMonthlyIncome;
-  const rate = Math.min((totalAssets / requiredAssets) * 100, 100);
+  // ② 期間指定（元本も取崩す）: PMT計算
+  // PMT = PV × r / (1 - (1+r)^-n)
+  const periodYears  = parseFloat(document.getElementById('firePeriodYears')?.value) || 30;
+  const n = periodYears * 12; // 月数
+  let periodMonthly = 0;
+  if (monthlyRate > 0) {
+    periodMonthly = totalAssets * monthlyRate / (1 - Math.pow(1 + monthlyRate, -n));
+  } else {
+    periodMonthly = totalAssets / n;
+  }
+
+  // FIRE達成に必要な資産（永続モード基準）
+  const requiredAssets = (monthlyExp * 12) / annualRate;
+
+  // 現在の達成率（永続モード基準）
+  const rate = Math.min((totalAssets / requiredAssets) * 100, 999);
+
+  // 使用する取崩し額
+  const currentMonthly = fireMode === 'forever' ? foreverMonthly : periodMonthly;
+  const gap = monthlyExp - currentMonthly;
 
   // UI更新
   const fireSection = document.getElementById('fireSection');
   if (!fireSection) return;
   fireSection.style.display = activeOwner === 'all' ? '' : 'none';
+  if (activeOwner !== 'all') return;
 
-  document.getElementById('fireBar').style.width = `${rate}%`;
+  document.getElementById('fireBar').style.width = `${Math.min(rate,100)}%`;
   document.getElementById('fireRateLabel').textContent = `${rate.toFixed(1)}% 達成`;
   document.getElementById('fireGoalLabel').textContent = `目標: 月${fmtJpy(monthlyExp)}`;
-  document.getElementById('fireCurrentIncome').textContent = fmtJpy(Math.round(currentMonthlyIncome)) + '/月';
-  document.getElementById('fireGap').textContent = gap > 0
-    ? `-${fmtJpy(Math.round(gap))}/月`
-    : `達成済み 🎉`;
+  document.getElementById('fireCurrentIncome').textContent = fmtJpy(Math.round(foreverMonthly)) + '/月';
+  document.getElementById('firePeriodIncome') && (document.getElementById('firePeriodIncome').textContent = fmtJpy(Math.round(periodMonthly)) + '/月');
+  document.getElementById('fireGap').textContent = gap <= 0
+    ? `達成済み 🎉`
+    : `不足 ${fmtJpy(Math.round(gap))}/月`;
+  document.getElementById('fireGap').style.color = gap <= 0 ? 'var(--up)' : 'var(--down)';
   document.getElementById('fireRequired').textContent = fmtJpy(Math.round(requiredAssets));
   document.getElementById('fireCurrent').textContent = fmtJpy(Math.round(totalAssets));
-
-  // カラー
-  document.getElementById('fireGap').style.color = gap <= 0 ? 'var(--up)' : 'var(--down)';
 }
 
 function renderAll() {
