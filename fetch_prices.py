@@ -27,7 +27,7 @@ TRUST_FUNDS = [
 ]
 
 US_STOCKS = [
-    "CRWD", "AAPL", "PYPL", "TSLA", "XOM", "MMM", "MO", "MSFT",
+    "CRWD", "AAPL", "PAPY", "TSLA", "XOM", "MMM", "MO", "MSFT",
     "SQ", "JPM", "DHR", "OKTA", "COST", "WMT", "NVDA", "UNH",
     "CVX", "TGT", "DIS", "PEP", "KO",
     "BFLY", "QS", "JOBY", "SBSW", "ALT", "RXRX", "MP", "CHPT",
