@@ -236,11 +236,20 @@ def main():
     today = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     print(f"=== 価格取得開始: {today} ===\n")
 
+    # 既存のprices.jsonを読み込んで前回値を保持
+    prev_prices = {"trusts": {}, "stocks": {}}
+    try:
+        with open("prices.json", "r", encoding="utf-8") as f:
+            prev_prices = json.load(f)
+        print(f"前回値読み込み: 投信{len(prev_prices.get('trusts',{}))}件, 株{len(prev_prices.get('stocks',{}))}件")
+    except Exception:
+        print("前回値なし（初回実行）")
+
     prices = {
         "updatedAt": today,
-        "usdJpy":    155.0,
-        "trusts":    {},
-        "stocks":    {},
+        "usdJpy":    prev_prices.get("usdJpy", 155.0),
+        "trusts":    dict(prev_prices.get("trusts", {})),  # 前回値を引き継ぐ
+        "stocks":    dict(prev_prices.get("stocks", {})),  # 前回値を引き継ぐ
     }
 
     print("【USD/JPY】")
@@ -265,6 +274,9 @@ def main():
         result = fetch_stock_price(ticker, prices["usdJpy"])
         if result:
             prices["stocks"][ticker] = result
+        elif ticker in prev_prices.get("stocks", {}):
+            prices["stocks"][ticker] = prev_prices["stocks"][ticker]
+            print(f"  {ticker}: 前回値を維持 ({prev_prices['stocks'][ticker].get('price',0):.2f}円)")
         time.sleep(0.3)
 
     with open("prices.json", "w", encoding="utf-8") as f:
