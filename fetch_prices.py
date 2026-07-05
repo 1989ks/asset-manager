@@ -30,8 +30,7 @@ US_STOCKS = [
     "CRWD", "AAPL", "PAPY", "TSLA", "XOM", "MMM", "MO", "MSFT",
     "SQ", "JPM", "DHR", "OKTA", "COST", "WMT", "NVDA", "UNH",
     "CVX", "TGT", "DIS", "PEP", "KO",
-    # iGrow銘柄は株数不明のため除外（評価額を手動管理）
-    # "BFLY", "QS", "JOBY", "SBSW", "ALT", "RXRX", "MP", "CHPT",
+    "BFLY", "QS", "JOBY", "SBSW", "ALT", "RXRX", "MP", "CHPT",
 ]
 
 
